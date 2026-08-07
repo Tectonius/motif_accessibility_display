@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GM12878 TF Accessibility Profiles</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #6b7280;
+    --border: #d9dde3;
+    --panel: #f6f7f9;
+    --accent: #2563eb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216;
+      --fg: #e8eaed;
+      --muted: #9aa3af;
+      --border: #2a2f37;
+      --panel: #161a20;
+      --accent: #5b9dff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.4;
+  }
+  header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 {
+    font-size: 1.15rem;
+    margin: 0 0 0.15rem 0;
+    font-weight: 650;
+  }
+  header p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.25rem 1.5rem 3rem;
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    padding: 1rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 1.25rem;
+  }
+  .control {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 160px;
+  }
+  .control label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  select {
+    font-size: 0.92rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--fg);
+  }
+  .control.grow { flex: 1; min-width: 220px; }
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.9rem;
+  }
+  .meta-row h2 {
+    font-size: 1.3rem;
+    margin: 0;
+  }
+  .meta-row .osc-info {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .plots {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+  @media (min-width: 900px) {
+    .plots { grid-template-columns: 1fr 1fr; }
+  }
+  figure {
+    margin: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel);
+    padding: 0.75rem;
+    overflow: hidden;
+  }
+  figure img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 6px;
+    background: #fff;
+  }
+  figcaption {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+    text-align: center;
+  }
+  .missing {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 220px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+  }
+  footer {
+    color: var(--muted);
+    font-size: 0.78rem;
+    text-align: center;
+    padding: 1.5rem;
+  }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>GM12878 TF Accessibility Profiles</h1>
+  <p>Aggregate Hi-C-derived accessibility signal around transcription factor binding sites — full mixed-enzyme pool vs. DNase-I-only subset</p>
+</header>
+<main>
+  <div class="controls">
+    <div class="control">
+      <label for="analysisType">Analysis</label>
+      <select id="analysisType">
+        <option value="motif">Motif accessibility (ChIP-seq-bound motifs)</option>
+        <option value="nucleosome">Nucleosome detection (ChIP-seq peak center)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label for="track">Track</label>
+      <select id="track">
+        <option value="full">Full (mixed-enzyme h.bw)</option>
+        <option value="dnase">DNase-I only</option>
+      </select>
+    </div>
+    <div class="control">
+      <label for="sortBy">Sort TFs by</label>
+      <select id="sortBy">
+        <option value="alpha">Alphabetical</option>
+        <option value="osc">Oscillation score (high → low)</option>
+      </select>
+    </div>
+    <div class="control grow">
+      <label for="tf">Transcription factor</label>
+      <select id="tf"></select>
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <h2 id="tfTitle">—</h2>
+    <span class="osc-info" id="oscInfo"></span>
+  </div>
+
+  <div class="plots">
+    <figure>
+      <img id="profileImg" alt="Aggregate profile plot">
+      <figcaption>Aggregate profile</figcaption>
+    </figure>
+    <figure>
+      <img id="heatmapImg" alt="Heatmap plot">
+      <figcaption>Per-region heatmap</figcaption>
+    </figure>
+  </div>
+</main>
+<footer>
+  Generated from <code>motif_accessibility_profiles</code>, <code>nucleosome_detection</code>,
+  and their DNase-I-only regenerated counterparts.
+</footer>
+
+<script>
+(async function () {
+  const manifest = await fetch('data/manifest.json').then(r => r.json());
+  const allTfs = manifest.tfs;
+
+  const oscData = { full: {}, dnase: {} };
+  async function loadOsc(track, path) {
+    try {
+      const text = await fetch(path).then(r => r.ok ? r.text() : '');
+      if (!text) return;
+      const lines = text.trim().split('\n').slice(1);
+      for (const line of lines) {
+        const [rank, tf, score, period, baseline] = line.split('\t');
+        oscData[track][tf] = { rank: +rank, score: +score, period: +period, baseline: +baseline };
+      }
+    } catch (e) { /* ranking file optional */ }
+  }
+  await Promise.all([
+    loadOsc('full', 'data/oscillation_full.tsv'),
+    loadOsc('dnase', 'data/oscillation_dnase.tsv'),
+  ]);
+
+  const analysisSel = document.getElementById('analysisType');
+  const trackSel = document.getElementById('track');
+  const sortSel = document.getElementById('sortBy');
+  const tfSel = document.getElementById('tf');
+  const tfTitle = document.getElementById('tfTitle');
+  const oscInfo = document.getElementById('oscInfo');
+  const profileImg = document.getElementById('profileImg');
+  const heatmapImg = document.getElementById('heatmapImg');
+
+  function oscOptionAvailable() {
+    return analysisSel.value === 'nucleosome';
+  }
+
+  function updateSortOptions() {
+    const oscOption = sortSel.querySelector('option[value="osc"]');
+    if (oscOptionAvailable()) {
+      oscOption.hidden = false;
+      oscOption.disabled = false;
+    } else {
+      oscOption.hidden = true;
+      oscOption.disabled = true;
+      if (sortSel.value === 'osc') sortSel.value = 'alpha';
+    }
+  }
+
+  function currentTfList() {
+    const track = trackSel.value;
+    if (sortSel.value === 'osc' && oscOptionAvailable()) {
+      const ranked = allTfs
+        .map(tf => ({ tf, score: (oscData[track][tf] || {}).score }))
+        .filter(x => x.score !== undefined)
+        .sort((a, b) => b.score - a.score)
+        .map(x => x.tf);
+      const unranked = allTfs.filter(tf => !ranked.includes(tf)).sort();
+      return ranked.concat(unranked);
+    }
+    return [...allTfs].sort();
+  }
+
+  function populateTfSelect() {
+    const prev = tfSel.value;
+    const list = currentTfList();
+    tfSel.innerHTML = '';
+    for (const tf of list) {
+      const opt = document.createElement('option');
+      opt.value = tf;
+      const track = trackSel.value;
+      const osc = oscData[track][tf];
+      opt.textContent = (sortSel.value === 'osc' && osc)
+        ? `${tf}  (score ${osc.score.toFixed(3)})`
+        : tf;
+      tfSel.appendChild(opt);
+    }
+    if (list.includes(prev)) tfSel.value = prev;
+  }
+
+  function imgPath(kind) {
+    const analysis = analysisSel.value;
+    const track = trackSel.value;
+    const tf = tfSel.value;
+    return `plots/${analysis}/${track}/${tf}/${kind}.png`;
+  }
+
+  function setImgWithFallback(imgEl, src) {
+    imgEl.onerror = () => {
+      imgEl.onerror = null;
+      imgEl.removeAttribute('src');
+      imgEl.alt = 'Not available for this combination';
+    };
+    imgEl.src = src;
+  }
+
+  function render() {
+    const tf = tfSel.value;
+    const track = trackSel.value;
+    const trackLabel = track === 'full' ? 'full mixed-enzyme h.bw' : 'DNase-I only';
+    const analysisLabel = analysisSel.value === 'motif' ? 'Motif accessibility' : 'Nucleosome detection';
+    tfTitle.textContent = `${tf} — ${analysisLabel} (${trackLabel})`;
+
+    const osc = oscData[track][tf];
+    oscInfo.textContent = (analysisSel.value === 'nucleosome' && osc)
+      ? `oscillation score ${osc.score.toFixed(3)} · dominant period ${osc.period}bp · rank ${osc.rank}/${allTfs.length}`
+      : '';
+
+    setImgWithFallback(profileImg, imgPath('profile'));
+    setImgWithFallback(heatmapImg, imgPath('heatmap'));
+  }
+
+  analysisSel.addEventListener('change', () => { updateSortOptions(); populateTfSelect(); render(); });
+  trackSel.addEventListener('change', () => { populateTfSelect(); render(); });
+  sortSel.addEventListener('change', () => { populateTfSelect(); render(); });
+  tfSel.addEventListener('change', render);
+
+  updateSortOptions();
+  populateTfSelect();
+  render();
+})();
+</script>
+</body>
+</html>
