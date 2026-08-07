@@ -210,12 +210,13 @@
           <span class="tooltip" role="tooltip">
             <strong>Oscillation score</strong>: peak autocorrelation (100–250bp lag
             band, bracketing the canonical ~147bp nucleosome repeat) of the
-            accessibility signal flanking a TF's ChIP-seq peaks, after
-            excluding the central ±200bp peak itself and detrending a local
-            baseline. Measures genuine periodic nucleosome-phasing ripples,
-            not generic signal noise/variance. Computed once from the
-            Nucleosome-detection (ChIP-seq peak-center) profiles and reused
-            here as a sort key for both analyses.
+            accessibility signal flanking the reference point, after
+            excluding the central ±200bp and detrending a local baseline.
+            Measures genuine periodic nucleosome-phasing ripples, not generic
+            signal noise/variance. Computed independently for each analysis
+            from its own profile shape — motif-centered for Motif
+            accessibility, ChIP-seq-peak-centered for Nucleosome detection —
+            so scores are not comparable across the two.
           </span>
         </span>
       </label>
@@ -256,21 +257,31 @@
   const manifest = await fetch('data/manifest.json').then(r => r.json());
   const allTfs = manifest.tfs;
 
-  const oscData = { full: {}, dnase: {} };
-  async function loadOsc(track, path) {
+  // Oscillation score is specific to *which profile shape it's computed from*
+  // -- motif-centered (3000bp flank, 25bp bins) and ChIP-seq-peak-centered
+  // (2000bp flank, 10bp bins) are different measurements of the same TF, so
+  // each analysis gets its own independently-computed score/ranking rather
+  // than sharing one.
+  const oscData = {
+    motif: { full: {}, dnase: {} },
+    nucleosome: { full: {}, dnase: {} },
+  };
+  async function loadOsc(analysis, track, path) {
     try {
       const text = await fetch(path).then(r => r.ok ? r.text() : '');
       if (!text) return;
       const lines = text.trim().split('\n').slice(1);
       for (const line of lines) {
         const [rank, tf, score, period, baseline] = line.split('\t');
-        oscData[track][tf] = { rank: +rank, score: +score, period: +period, baseline: +baseline };
+        oscData[analysis][track][tf] = { rank: +rank, score: +score, period: +period, baseline: +baseline };
       }
     } catch (e) { /* ranking file optional */ }
   }
   await Promise.all([
-    loadOsc('full', 'data/oscillation_full.tsv'),
-    loadOsc('dnase', 'data/oscillation_dnase.tsv'),
+    loadOsc('motif', 'full', 'data/oscillation_motif_full.tsv'),
+    loadOsc('motif', 'dnase', 'data/oscillation_motif_dnase.tsv'),
+    loadOsc('nucleosome', 'full', 'data/oscillation_nucleosome_full.tsv'),
+    loadOsc('nucleosome', 'dnase', 'data/oscillation_nucleosome_dnase.tsv'),
   ]);
 
   const analysisSel = document.getElementById('analysisType');
@@ -282,16 +293,15 @@
   const profileImg = document.getElementById('profileImg');
   const heatmapImg = document.getElementById('heatmapImg');
 
-  // Oscillation score is a per-TF metric computed once from the
-  // Nucleosome-detection profiles, but it's just a property of the TF (and
-  // the selected track) -- it's equally valid to sort the Motif-accessibility
-  // view by it, e.g. "show motif profiles ordered by how strongly each TF
-  // shows nucleosome phasing at its ChIP-seq sites."
+  function currentOscMap() {
+    return oscData[analysisSel.value][trackSel.value];
+  }
+
   function currentTfList() {
-    const track = trackSel.value;
     if (sortSel.value === 'osc') {
+      const oscMap = currentOscMap();
       const ranked = allTfs
-        .map(tf => ({ tf, score: (oscData[track][tf] || {}).score }))
+        .map(tf => ({ tf, score: (oscMap[tf] || {}).score }))
         .filter(x => x.score !== undefined)
         .sort((a, b) => b.score - a.score)
         .map(x => x.tf);
@@ -304,12 +314,12 @@
   function populateTfSelect() {
     const prev = tfSel.value;
     const list = currentTfList();
+    const oscMap = currentOscMap();
     tfSel.innerHTML = '';
     for (const tf of list) {
       const opt = document.createElement('option');
       opt.value = tf;
-      const track = trackSel.value;
-      const osc = oscData[track][tf];
+      const osc = oscMap[tf];
       opt.textContent = (sortSel.value === 'osc' && osc)
         ? `${tf}  (score ${osc.score.toFixed(3)})`
         : tf;
@@ -341,7 +351,7 @@
     const analysisLabel = analysisSel.value === 'motif' ? 'Motif accessibility' : 'Nucleosome detection';
     tfTitle.textContent = `${tf} — ${analysisLabel} (${trackLabel})`;
 
-    const osc = oscData[track][tf];
+    const osc = currentOscMap()[tf];
     oscInfo.textContent = osc
       ? `oscillation score ${osc.score.toFixed(3)} · dominant period ${osc.period}bp · rank ${osc.rank}/${allTfs.length}`
       : '';
