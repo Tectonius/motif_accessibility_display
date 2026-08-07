@@ -83,6 +83,40 @@
     color: var(--fg);
   }
   .control.grow { flex: 1; min-width: 220px; }
+  .info-icon {
+    position: relative;
+    display: inline-block;
+    margin-left: 0.25rem;
+    cursor: help;
+    color: var(--accent);
+    font-size: 0.85rem;
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 700;
+  }
+  .info-icon .tooltip {
+    display: none;
+    position: absolute;
+    z-index: 10;
+    top: 135%;
+    left: 0;
+    width: 280px;
+    max-width: 70vw;
+    background: var(--fg);
+    color: var(--bg);
+    font-size: 0.78rem;
+    font-weight: 400;
+    line-height: 1.45;
+    padding: 0.6rem 0.7rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    cursor: default;
+  }
+  .info-icon:hover .tooltip,
+  .info-icon:focus .tooltip,
+  .info-icon:focus-within .tooltip {
+    display: block;
+  }
   .meta-row {
     display: flex;
     justify-content: space-between;
@@ -157,8 +191,8 @@
     <div class="control">
       <label for="analysisType">Analysis</label>
       <select id="analysisType">
-        <option value="motif">Motif accessibility (ChIP-seq-bound motifs)</option>
-        <option value="nucleosome">Nucleosome detection (ChIP-seq peak center)</option>
+        <option value="motif">Motif accessibility (motif-verified ChIP-seq peaks)</option>
+        <option value="nucleosome">Nucleosome detection (ChIP-seq peaks only)</option>
       </select>
     </div>
     <div class="control">
@@ -169,7 +203,22 @@
       </select>
     </div>
     <div class="control">
-      <label for="sortBy">Sort TFs by</label>
+      <label for="sortBy">
+        Sort TFs by
+        <span class="info-icon" tabindex="0" aria-label="What is the oscillation score?">
+          ⓘ
+          <span class="tooltip" role="tooltip">
+            <strong>Oscillation score</strong>: peak autocorrelation (100–250bp lag
+            band, bracketing the canonical ~147bp nucleosome repeat) of the
+            accessibility signal flanking a TF's ChIP-seq peaks, after
+            excluding the central ±200bp peak itself and detrending a local
+            baseline. Measures genuine periodic nucleosome-phasing ripples,
+            not generic signal noise/variance. Computed once from the
+            Nucleosome-detection (ChIP-seq peak-center) profiles and reused
+            here as a sort key for both analyses.
+          </span>
+        </span>
+      </label>
       <select id="sortBy">
         <option value="alpha">Alphabetical</option>
         <option value="osc">Oscillation score (high → low)</option>
@@ -233,25 +282,14 @@
   const profileImg = document.getElementById('profileImg');
   const heatmapImg = document.getElementById('heatmapImg');
 
-  function oscOptionAvailable() {
-    return analysisSel.value === 'nucleosome';
-  }
-
-  function updateSortOptions() {
-    const oscOption = sortSel.querySelector('option[value="osc"]');
-    if (oscOptionAvailable()) {
-      oscOption.hidden = false;
-      oscOption.disabled = false;
-    } else {
-      oscOption.hidden = true;
-      oscOption.disabled = true;
-      if (sortSel.value === 'osc') sortSel.value = 'alpha';
-    }
-  }
-
+  // Oscillation score is a per-TF metric computed once from the
+  // Nucleosome-detection profiles, but it's just a property of the TF (and
+  // the selected track) -- it's equally valid to sort the Motif-accessibility
+  // view by it, e.g. "show motif profiles ordered by how strongly each TF
+  // shows nucleosome phasing at its ChIP-seq sites."
   function currentTfList() {
     const track = trackSel.value;
-    if (sortSel.value === 'osc' && oscOptionAvailable()) {
+    if (sortSel.value === 'osc') {
       const ranked = allTfs
         .map(tf => ({ tf, score: (oscData[track][tf] || {}).score }))
         .filter(x => x.score !== undefined)
@@ -304,7 +342,7 @@
     tfTitle.textContent = `${tf} — ${analysisLabel} (${trackLabel})`;
 
     const osc = oscData[track][tf];
-    oscInfo.textContent = (analysisSel.value === 'nucleosome' && osc)
+    oscInfo.textContent = osc
       ? `oscillation score ${osc.score.toFixed(3)} · dominant period ${osc.period}bp · rank ${osc.rank}/${allTfs.length}`
       : '';
 
@@ -312,12 +350,11 @@
     setImgWithFallback(heatmapImg, imgPath('heatmap'));
   }
 
-  analysisSel.addEventListener('change', () => { updateSortOptions(); populateTfSelect(); render(); });
+  analysisSel.addEventListener('change', () => { populateTfSelect(); render(); });
   trackSel.addEventListener('change', () => { populateTfSelect(); render(); });
   sortSel.addEventListener('change', () => { populateTfSelect(); render(); });
   tfSel.addEventListener('change', render);
 
-  updateSortOptions();
   populateTfSelect();
   render();
 })();
