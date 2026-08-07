@@ -347,7 +347,7 @@
 
 <script>
 (async function () {
-  const manifest = await fetch('data/manifest.json').then(r => r.json());
+  const manifest = await fetch('data/manifest.json', { cache: 'no-cache' }).then(r => r.json());
   const allTfs = manifest.tfs;
   const regionCounts = { motif: manifest.n_motif || {}, nucleosome: manifest.n_nucleosome || {} };
 
@@ -362,7 +362,7 @@
   };
   async function loadOsc(analysis, track, path) {
     try {
-      const text = await fetch(path).then(r => r.ok ? r.text() : '');
+      const text = await fetch(path, { cache: 'no-cache' }).then(r => r.ok ? r.text() : '');
       if (!text) return;
       const lines = text.trim().split('\n').slice(1);
       for (const line of lines) {
@@ -415,9 +415,10 @@
       opt.value = tf;
       const osc = oscMap[tf];
       const n = regionCounts[analysisSel.value][tf];
+      const nPart = n !== undefined ? ` (n = ${n})` : '';
       opt.textContent = (sortSel.value === 'osc' && osc)
-        ? `${tf}  (score ${osc.score.toFixed(3)}) (n = ${n !== undefined ? n : '?'})`
-        : tf;
+        ? `${tf}  (score ${osc.score.toFixed(3)})${nPart}`
+        : `${tf}${nPart}`;
       tfSel.appendChild(opt);
     }
     if (list.includes(prev)) tfSel.value = prev;
