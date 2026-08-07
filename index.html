@@ -349,6 +349,7 @@
 (async function () {
   const manifest = await fetch('data/manifest.json').then(r => r.json());
   const allTfs = manifest.tfs;
+  const regionCounts = { motif: manifest.n_motif || {}, nucleosome: manifest.n_nucleosome || {} };
 
   // Oscillation score is specific to *which profile shape it's computed from*
   // -- motif-centered (3000bp flank, 25bp bins) and ChIP-seq-peak-centered
@@ -413,8 +414,9 @@
       const opt = document.createElement('option');
       opt.value = tf;
       const osc = oscMap[tf];
+      const n = regionCounts[analysisSel.value][tf];
       opt.textContent = (sortSel.value === 'osc' && osc)
-        ? `${tf}  (score ${osc.score.toFixed(3)})`
+        ? `${tf}  (score ${osc.score.toFixed(3)}) (n = ${n !== undefined ? n : '?'})`
         : tf;
       tfSel.appendChild(opt);
     }
