@@ -232,10 +232,10 @@
         <option value="full">Full (mixed-enzyme h.bw)</option>
         <option value="dnase">DNase-I only</option>
         <option value="mnase">MNase only</option>
-        <option value="full_plus">Full, + strand (motif-relative)</option>
-        <option value="full_minus">Full, − strand (motif-relative)</option>
-        <option value="dnase_plus">DNase-I only, + strand (motif-relative)</option>
-        <option value="dnase_minus">DNase-I only, − strand (motif-relative)</option>
+        <option value="full_plus">Full, + strand</option>
+        <option value="full_minus">Full, − strand</option>
+        <option value="dnase_plus">DNase-I only, + strand</option>
+        <option value="dnase_minus">DNase-I only, − strand</option>
       </select>
     </div>
     <div class="control">
@@ -375,7 +375,10 @@
   // each analysis gets its own independently-computed score/ranking rather
   // than sharing one.
   const oscData = {
-    motif: { full: {}, dnase: {}, mnase: {} },
+    motif: {
+      full: {}, dnase: {}, mnase: {},
+      full_plus: {}, full_minus: {}, dnase_plus: {}, dnase_minus: {},
+    },
     nucleosome: { full: {}, dnase: {}, mnase: {} },
   };
   async function loadOsc(analysis, track, path) {
@@ -396,6 +399,10 @@
     loadOsc('nucleosome', 'full', 'data/oscillation_nucleosome_full.tsv'),
     loadOsc('nucleosome', 'dnase', 'data/oscillation_nucleosome_dnase.tsv'),
     loadOsc('nucleosome', 'mnase', 'data/oscillation_nucleosome_mnase.tsv'),
+    loadOsc('motif', 'full_plus', 'data/oscillation_motif_full_plus.tsv'),
+    loadOsc('motif', 'full_minus', 'data/oscillation_motif_full_minus.tsv'),
+    loadOsc('motif', 'dnase_plus', 'data/oscillation_motif_dnase_plus.tsv'),
+    loadOsc('motif', 'dnase_minus', 'data/oscillation_motif_dnase_minus.tsv'),
   ]);
 
   const analysisSel = document.getElementById('analysisType');
