@@ -291,9 +291,7 @@
       from the reference point (0 = the reference point itself — see below
       for what that point is in each analysis). The <strong>y-axis</strong>
       is the mean signal value, averaged across every region in the set, at
-      that position. It's a single aggregate line — it doesn't show how much
-      individual regions vary from each other or from one another; that's
-      what the heatmap is for.
+      that position.
     </p>
 
     <h4>Heatmap (bottom)</h4>
@@ -301,15 +299,13 @@
       Same underlying matrix as the profile plot, rendered with
       <code>plotHeatmap</code> instead of averaged down to one line. Same
       x-axis (distance from the reference point). Each <strong>row</strong>
-      is one individual region — one ChIP-seq peak, or one motif instance —
-      <em>not</em> an aggregate of anything. Color encodes that specific
-      region's signal intensity at that bin. Rows are sorted top-to-bottom
+      is one individual region, one ChIP-seq peak, and/or one motif instance.
+      Color encodes that specific region's signal intensity at that bin according to the color bar on the right. 
+      Rows are sorted top-to-bottom
       by descending mean signal (deepTools' default
       <code>--sortRegions descend --sortUsing mean</code>), so the top rows
       are the individual sites with the strongest, most consistent signal,
-      fading to the weakest/noisiest sites at the bottom. That ordering is a
-      sort, not a biological gradient — there's no reason to expect anything
-      continuous moving down the axis, since each row is an unrelated site.
+      fading to the weakest/noisiest sites at the bottom.
     </p>
 
     <h4>Motif accessibility vs. Nucleosome detection</h4>
@@ -317,31 +313,29 @@
       <strong>Motif accessibility</strong>: regions are JASPAR motif
       instances for the selected TF, filtered to only the instances that
       overlap a real ChIP-seq peak for that TF ("motif-verified ChIP-seq
-      peaks") — centered on the motif's own predicted location, ±3000bp
+      peaks") centered on the motif's own predicted location, ±3000bp
       flank, 25bp bins.
       <strong>Nucleosome detection</strong>: regions are the TF's raw
-      ChIP-seq peaks with no motif filtering ("ChIP-seq peaks only"),
-      centered on the peak's own summit — used to look for the periodic
-      nucleosome-phasing ripples that flank a strongly bound site, ±2000bp
-      flank, 10bp bins. Because the reference point, flank, and bin size all
+      ChIP-seq peaks with no motif filtering,
+      centered on the peak's own summit. Because the reference point, flank, and bin size all
       differ between the two, they aren't directly comparable
-      position-for-position, and (see the sort tooltip above) their
-      oscillation scores are computed independently rather than shared.
+      position-for-position, and their
+      oscillation scores are computed independently.
     </p>
 
     <h4>Full vs. DNase-I only vs. MNase-only track</h4>
     <p>
-      All three tracks are the same kind of measurement — a base-pair-resolution
+      All three tracks are the same kind of measurement, a base-pair-resolution
       pileup of enzymatic cut/insertion events, additively pooled across
       GM12878 Hi-C replicates. <strong>Full</strong> is all 237 pooled
-      replicates, which ENCODE metadata shows span at least six different
+      replicates, which span at least six different
       fragmentation chemistries (mostly MNase and DNase I, plus CviJI,
       benzonase, dsDNA fragmentase, and quadRE) with different sequence
-      cutting preferences. <strong>DNase-I only</strong> is the 65 of those
-      237 replicates ENCODE metadata confirms were digested with DNase I
-      specifically, merged the same additive way. <strong>MNase only</strong>
-      is the 70 of those 237 replicates ENCODE metadata confirms were
-      digested with micrococcal nuclease instead, merged the same way.
+      cutting preferences. <strong>DNase-I only</strong> is the sum of 65 of
+      those 237 replicates that ENCODE metadata confirms was digested with
+      DNase I specifically. <strong>MNase only</strong> is the sum of 70 of
+      those 237 replicates that ENCODE metadata confirms was digested with
+      micrococcal nuclease instead.
     </p>
 
     <h4>Full, + strand / Full, − strand</h4>
@@ -365,10 +359,6 @@
     </p>
   </section>
 </main>
-<footer>
-  Generated from <code>motif_accessibility_profiles</code>, <code>nucleosome_detection</code>,
-  and their DNase-I-only regenerated counterparts.
-</footer>
 
 <script>
 (async function () {
