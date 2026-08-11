@@ -19,6 +19,13 @@ Two analyses, each run against all three tracks:
   nucleosome-phasing ripples flanking the peak. TFs are rankable by an
   autocorrelation-based oscillation score (`data/oscillation_*.tsv`).
 
+Motif accessibility is additionally split by the strand of the JASPAR
+motif-scan hit itself (`full_plus`/`full_minus`, `dnase_plus`/`dnase_minus`),
+for both the full and DNase-I-only tracks — deepTools orients minus-strand
+regions when building the matrix, so a real difference between the two
+strand tracks reflects genuine strand-linked asymmetry, not a coordinate
+artifact.
+
 Open `index.html` (works from GitHub Pages or any static file server — no
 build step) and use the dropdowns to pick analysis type, track, sort order,
 and TF.

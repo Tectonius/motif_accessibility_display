@@ -234,6 +234,8 @@
         <option value="mnase">MNase only</option>
         <option value="full_plus">Full, + strand (motif-relative)</option>
         <option value="full_minus">Full, − strand (motif-relative)</option>
+        <option value="dnase_plus">DNase-I only, + strand (motif-relative)</option>
+        <option value="dnase_minus">DNase-I only, − strand (motif-relative)</option>
       </select>
     </div>
     <div class="control">
@@ -338,24 +340,25 @@
       micrococcal nuclease instead.
     </p>
 
-    <h4>Full, + strand / Full, − strand</h4>
+    <h4>Strand-split tracks (+ strand / − strand, full and DNase-I only)</h4>
     <p>
-      Same motif-centered pipeline as Motif accessibility above, on the same
-      full mixed-enzyme track, but the motif instances are split by the
-      strand of the JASPAR motif-scan hit itself (not a ChIP-seq peak
-      strand — narrowPeak entries here don't carry one) before aggregating.
-      deepTools orients minus-strand regions when building the matrix, so
-      both tracks already plot in a consistent 5'→3' direction relative to
-      the motif — a "+ strand" instance and a "− strand" instance of the
-      same motif are shown the same way round, not mirror images of each
-      other by construction. So a real difference between the two tracks
-      here reflects genuine strand-linked asymmetry (biological or
-      technical) in the flanking accessibility signal, not a coordinate
-      artifact. Only meaningful for Motif accessibility (Nucleosome
-      detection has no motif to be relative to, so there's nothing to
-      split by strand), and only computed for the full track so far. Two
-      TFs (FOS, RXRA) have too few motif-verified peaks to produce a
-      minus-strand instance at all, so their "− strand" view has no plot.
+      Same motif-centered pipeline as Motif accessibility above, on the full
+      mixed-enzyme track or the DNase-I-only track, but the motif instances
+      are split by the strand of the JASPAR motif-scan hit itself (not a
+      ChIP-seq peak strand — narrowPeak entries here don't carry one) before
+      aggregating. deepTools orients minus-strand regions when building the
+      matrix, so both tracks already plot in a consistent 5'→3' direction
+      relative to the motif — a "+ strand" instance and a "− strand"
+      instance of the same motif are shown the same way round, not mirror
+      images of each other by construction. So a real difference between
+      the two strand tracks reflects genuine strand-linked asymmetry
+      (biological or technical) in the flanking accessibility signal, not a
+      coordinate artifact. Only meaningful for Motif accessibility
+      (Nucleosome detection has no motif to be relative to, so there's
+      nothing to split by strand), and not yet computed for the MNase-only
+      track. Two TFs (FOS, RXRA) have too few motif-verified peaks to
+      produce a minus-strand instance at all, so their "− strand" view has
+      no plot, on either track.
     </p>
   </section>
 </main>
@@ -404,10 +407,10 @@
   const profileImg = document.getElementById('profileImg');
   const heatmapImg = document.getElementById('heatmapImg');
 
-  // Strand-split tracks (full_plus/full_minus) only exist for Motif
-  // accessibility -- strand is relative to the motif itself, and
-  // Nucleosome detection has no motif to be relative to.
-  const STRAND_TRACKS = ['full_plus', 'full_minus'];
+  // Strand-split tracks (full_plus/full_minus, dnase_plus/dnase_minus) only
+  // exist for Motif accessibility -- strand is relative to the motif
+  // itself, and Nucleosome detection has no motif to be relative to.
+  const STRAND_TRACKS = ['full_plus', 'full_minus', 'dnase_plus', 'dnase_minus'];
 
   function updateTrackOptions() {
     const isMotif = analysisSel.value === 'motif';
@@ -482,6 +485,7 @@
     const trackLabels = {
       full: 'full mixed-enzyme h.bw', dnase: 'DNase-I only', mnase: 'MNase only',
       full_plus: 'full h.bw, + strand', full_minus: 'full h.bw, − strand',
+      dnase_plus: 'DNase-I only, + strand', dnase_minus: 'DNase-I only, − strand',
     };
     const trackLabel = trackLabels[track] || track;
     const analysisLabel = analysisSel.value === 'motif' ? 'Motif accessibility' : 'Nucleosome detection';
