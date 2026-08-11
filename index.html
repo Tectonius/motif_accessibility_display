@@ -236,6 +236,8 @@
         <option value="full_minus">Full, − strand</option>
         <option value="dnase_plus">DNase-I only, + strand</option>
         <option value="dnase_minus">DNase-I only, − strand</option>
+        <option value="full_compare">Full, strand comparison</option>
+        <option value="dnase_compare">DNase-I only, strand comparison</option>
       </select>
     </div>
     <div class="control">
@@ -360,6 +362,18 @@
       produce a minus-strand instance at all, so their "− strand" view has
       no plot, on either track.
     </p>
+
+    <h4>Strand comparison (full and DNase-I only)</h4>
+    <p>
+      Overlays the combined (both-strand), + strand, and − strand aggregate
+      profiles for the same TF on one chart, instead of viewing each
+      separately — the fastest way to see whether the strand-split tracks
+      above actually differ from each other and from the combined profile.
+      This is a single overlay chart, not a deepTools profile/heatmap pair,
+      so there's no heatmap for it (the heatmap panel will say "not
+      available" when this track is selected — that's expected, not
+      missing data).
+    </p>
   </section>
 </main>
 
@@ -414,10 +428,14 @@
   const profileImg = document.getElementById('profileImg');
   const heatmapImg = document.getElementById('heatmapImg');
 
-  // Strand-split tracks (full_plus/full_minus, dnase_plus/dnase_minus) only
-  // exist for Motif accessibility -- strand is relative to the motif
-  // itself, and Nucleosome detection has no motif to be relative to.
-  const STRAND_TRACKS = ['full_plus', 'full_minus', 'dnase_plus', 'dnase_minus'];
+  // Strand-split and strand-comparison tracks currently only exist for
+  // Motif accessibility -- strand is relative to the motif itself, and
+  // Nucleosome detection strand tracks (reusing the same ChIP-confirmed
+  // motif instances) are still being generated as of this commit.
+  const STRAND_TRACKS = [
+    'full_plus', 'full_minus', 'dnase_plus', 'dnase_minus',
+    'full_compare', 'dnase_compare',
+  ];
 
   function updateTrackOptions() {
     const isMotif = analysisSel.value === 'motif';
@@ -493,6 +511,7 @@
       full: 'full mixed-enzyme h.bw', dnase: 'DNase-I only', mnase: 'MNase only',
       full_plus: 'full h.bw, + strand', full_minus: 'full h.bw, − strand',
       dnase_plus: 'DNase-I only, + strand', dnase_minus: 'DNase-I only, − strand',
+      full_compare: 'full h.bw, strand comparison', dnase_compare: 'DNase-I only, strand comparison',
     };
     const trackLabel = trackLabels[track] || track;
     const analysisLabel = analysisSel.value === 'motif' ? 'Motif accessibility' : 'Nucleosome detection';
