@@ -30,6 +30,30 @@ Open `index.html` (works from GitHub Pages or any static file server — no
 build step) and use the dropdowns to pick analysis type, track, sort order,
 and TF.
 
+## CTCF-excluded nucleosome detection (non-CTCF TFs)
+
+Two additional analyses address a confound in the base Nucleosome detection
+analysis above: CTCF is itself the strongest known positioner of phased
+nucleosomes in the human genome, so any phasing seen at another TF's peaks
+could really be coming from a nearby CTCF site rather than the TF itself.
+
+- **Nucleosome detection, CTCF-excluded** (`nucleosome_no_ctcf/`) — same
+  peak-center-referenced method, but on a fresh, larger peak set (155
+  non-CTCF, non-histone-mark targets from
+  `ENCODE_intact_Hi-C_shared_data/ChIP-Seq/GM12878`) with every peak that has
+  a CTCF peak center within its own ±2000bp aggregation window removed
+  first. Two tracks: `full` (h.bw) and `mnase` (the Hi-C MNase-cutter
+  subset) — both Hi-C-derived, so agreement between them mainly reflects
+  shared underlying reads.
+- **Nucleosome detection, CTCF-excluded (real MNase-seq)**
+  (`nucleosome_mnase_seq/`) — the same CTCF-excluded peak set, aggregated
+  against a genuinely independent signal: ENCODE `ENCSR000CXP`, a real
+  standalone GM12878 MNase-seq experiment (Snyder lab, 2011, hg19→hg38
+  liftOver), for orthogonal replication.
+
+See `project_outlines/ctcf_excluded_nucleosome_detection.md` in the parent
+research repo for full methodology, data sources, and caveats.
+
 ## Source
 
 Generated from `ref_bias/accessibility_analysis/{motif_accessibility_profiles,
