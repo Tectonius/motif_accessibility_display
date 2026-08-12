@@ -224,6 +224,8 @@
       <select id="analysisType">
         <option value="motif">Motif accessibility (motif-verified ChIP-seq peaks)</option>
         <option value="nucleosome">Nucleosome detection (ChIP-seq peaks only)</option>
+        <option value="annot_motif">Annotated motif analysis (pre-annotated motif hits)</option>
+        <option value="annot_nonmotif">Annotated non-motif analysis (raw peaks, annotated source)</option>
       </select>
     </div>
     <div class="control">
@@ -327,6 +329,29 @@
       oscillation scores are computed independently.
     </p>
 
+    <h4>Annotated motif analysis / Annotated non-motif analysis</h4>
+    <p>
+      Both use a different ChIP-seq peak source
+      (<code>ENCODE_intact_Hi-C_shared_data/ChIP-Seq/GM12878</code>) where
+      each peak is already annotated with whether it contains a
+      high-confidence motif hit, its coordinates, and its strand -- no
+      separate JASPAR-genome-scan-plus-bedtools-intersect step needed, and
+      substantially higher hit rates than the from-scratch pipeline above
+      (median ~40% of peaks with a hit here, vs. single digits for most TFs
+      in Motif accessibility). Of the 167 genes available in this source,
+      73 are histone marks, Pol II phospho-isoforms, or general chromatin
+      cofactors (e.g. H3K27ac, EP300, RAD21) with no sequence-specific
+      motif at all -- real ChIP-seq experiments with real peaks, just
+      nothing to center a motif view on. <strong>Annotated motif
+      analysis</strong> covers the 94 genes with at least one
+      high-confidence hit, centered on the motif itself (same parameters as
+      Motif accessibility). <strong>Annotated non-motif analysis</strong>
+      covers all 167 genes, centered on the raw peak (same parameters as
+      Nucleosome detection) -- deliberately motif-agnostic, so it's the
+      only place here where the histone marks and other non-motif targets
+      show up. Full track (h.bw) only so far.
+    </p>
+
     <h4>Full vs. DNase-I only vs. MNase-only track</h4>
     <p>
       All three tracks are the same kind of measurement, a base-pair-resolution
@@ -382,8 +407,23 @@
 <script>
 (async function () {
   const manifest = await fetch('data/manifest.json', { cache: 'no-cache' }).then(r => r.json());
-  const allTfs = manifest.tfs;
-  const regionCounts = { motif: manifest.n_motif || {}, nucleosome: manifest.n_nucleosome || {} };
+  // Each analysis has its own TF/gene list -- Motif accessibility and
+  // Nucleosome detection share the original 86, but the annotated-source
+  // analyses cover different (and different-sized) gene sets: 94 genes
+  // with a real motif hit for Annotated motif analysis, all 167 genes
+  // available in that source for Annotated non-motif analysis.
+  const TF_LISTS = {
+    motif: manifest.tfs, nucleosome: manifest.tfs,
+    annot_motif: manifest.tfs_annot_motif || [],
+    annot_nonmotif: manifest.tfs_annot_nonmotif || [],
+  };
+  function currentAllTfs() {
+    return TF_LISTS[analysisSel.value] || [];
+  }
+  const regionCounts = {
+    motif: manifest.n_motif || {}, nucleosome: manifest.n_nucleosome || {},
+    annot_motif: manifest.n_annot_motif || {}, annot_nonmotif: manifest.n_annot_nonmotif || {},
+  };
 
   // Oscillation score is specific to *which profile shape it's computed from*
   // -- motif-centered (3000bp flank, 25bp bins) and ChIP-seq-peak-centered
@@ -399,6 +439,8 @@
       full: {}, dnase: {}, mnase: {},
       full_plus: {}, full_minus: {}, dnase_plus: {}, dnase_minus: {},
     },
+    annot_motif: { full: {} },
+    annot_nonmotif: { full: {} },
   };
   // The strand-comparison tracks (full_compare/dnase_compare) don't have
   // their own oscillation data -- they're a repackaging of the existing
@@ -431,6 +473,8 @@
     loadOsc('nucleosome', 'full_minus', 'data/oscillation_nucleosome_full_minus.tsv'),
     loadOsc('nucleosome', 'dnase_plus', 'data/oscillation_nucleosome_dnase_plus.tsv'),
     loadOsc('nucleosome', 'dnase_minus', 'data/oscillation_nucleosome_dnase_minus.tsv'),
+    loadOsc('annot_motif', 'full', 'data/oscillation_annot_motif_full.tsv'),
+    loadOsc('annot_nonmotif', 'full', 'data/oscillation_annot_nonmotif_full.tsv'),
   ]);
 
   const analysisSel = document.getElementById('analysisType');
@@ -474,17 +518,18 @@
   }
 
   function currentTfList() {
+    const tfs = currentAllTfs();
     if (sortSel.value === 'osc') {
       const oscMap = currentOscMap();
-      const ranked = allTfs
+      const ranked = tfs
         .map(tf => ({ tf, score: (oscMap[tf] || {}).score }))
         .filter(x => x.score !== undefined)
         .sort((a, b) => b.score - a.score)
         .map(x => x.tf);
-      const unranked = allTfs.filter(tf => !ranked.includes(tf)).sort();
+      const unranked = tfs.filter(tf => !ranked.includes(tf)).sort();
       return ranked.concat(unranked);
     }
-    return [...allTfs].sort();
+    return [...tfs].sort();
   }
 
   function populateTfSelect() {
@@ -532,16 +577,34 @@
       full_compare: 'full h.bw, strand comparison', dnase_compare: 'DNase-I only, strand comparison',
     };
     const trackLabel = trackLabels[track] || track;
-    const analysisLabel = analysisSel.value === 'motif' ? 'Motif accessibility' : 'Nucleosome detection';
+    const analysisLabels = {
+      motif: 'Motif accessibility', nucleosome: 'Nucleosome detection',
+      annot_motif: 'Annotated motif analysis', annot_nonmotif: 'Annotated non-motif analysis',
+    };
+    const analysisLabel = analysisLabels[analysisSel.value] || analysisSel.value;
     tfTitle.textContent = `${tf} — ${analysisLabel} (${trackLabel})`;
 
     const osc = currentOscMap()[tf];
     oscInfo.textContent = osc
-      ? `oscillation score ${osc.score.toFixed(3)} · dominant period ${osc.period}bp · rank ${osc.rank}/${allTfs.length}`
+      ? `oscillation score ${osc.score.toFixed(3)} · dominant period ${osc.period}bp · rank ${osc.rank}/${currentAllTfs().length}`
       : '';
 
     setImgWithFallback(profileImg, imgPath('profile'));
     setImgWithFallback(heatmapImg, imgPath('heatmap'));
+  }
+
+  // Hide any Analysis option whose TF list hasn't been populated yet
+  // (e.g. Annotated non-motif analysis while that pipeline is still
+  // running) rather than showing a dropdown with no TFs to pick from.
+  function hideEmptyAnalyses() {
+    for (const opt of analysisSel.querySelectorAll('option')) {
+      const empty = (TF_LISTS[opt.value] || []).length === 0;
+      opt.hidden = empty;
+      opt.disabled = empty;
+    }
+    if ((TF_LISTS[analysisSel.value] || []).length === 0) {
+      analysisSel.value = 'motif';
+    }
   }
 
   analysisSel.addEventListener('change', () => { updateTrackOptions(); populateTfSelect(); render(); });
@@ -549,6 +612,7 @@
   sortSel.addEventListener('change', () => { populateTfSelect(); render(); });
   tfSel.addEventListener('change', render);
 
+  hideEmptyAnalyses();
   updateTrackOptions();
   populateTfSelect();
   render();
