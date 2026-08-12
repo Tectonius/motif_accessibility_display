@@ -344,35 +344,37 @@
 
     <h4>Strand-split tracks (+ strand / − strand, full and DNase-I only)</h4>
     <p>
-      Same motif-centered pipeline as Motif accessibility above, on the full
-      mixed-enzyme track or the DNase-I-only track, but the motif instances
-      are split by the strand of the JASPAR motif-scan hit itself (not a
-      ChIP-seq peak strand — narrowPeak entries here don't carry one) before
-      aggregating. deepTools orients minus-strand regions when building the
-      matrix, so both tracks already plot in a consistent 5'→3' direction
-      relative to the motif — a "+ strand" instance and a "− strand"
-      instance of the same motif are shown the same way round, not mirror
-      images of each other by construction. So a real difference between
-      the two strand tracks reflects genuine strand-linked asymmetry
-      (biological or technical) in the flanking accessibility signal, not a
-      coordinate artifact. Only meaningful for Motif accessibility
-      (Nucleosome detection has no motif to be relative to, so there's
-      nothing to split by strand), and not yet computed for the MNase-only
-      track. Two TFs (FOS, RXRA) have too few motif-verified peaks to
-      produce a minus-strand instance at all, so their "− strand" view has
-      no plot, on either track.
+      The motif instances are split by the strand of the JASPAR motif-scan
+      hit itself (not a ChIP-seq peak strand — narrowPeak entries here
+      don't carry one) before aggregating. deepTools orients minus-strand
+      regions when building the matrix, so both tracks already plot in a
+      consistent 5'→3' direction relative to the motif — a "+ strand"
+      instance and a "− strand" instance of the same motif are shown the
+      same way round, not mirror images of each other by construction. So a
+      real difference between the two strand tracks reflects genuine
+      strand-linked asymmetry (biological or technical) in the flanking
+      accessibility signal, not a coordinate artifact. For Motif
+      accessibility this is the motif-centered pipeline as usual; for
+      Nucleosome detection (which has no strand of its own — raw ChIP-seq
+      peaks aren't stranded) this instead reuses the same ChIP-confirmed
+      motif instances, split by strand, but aggregated with Nucleosome
+      detection's own window/bin parameters, so its region set (and N) is
+      narrower than the base "chip peaks only" track. Not yet computed for
+      the MNase-only track. Two TFs (FOS, RXRA) have too few motif-verified
+      peaks to produce a minus-strand instance at all, so their "− strand"
+      view has no plot, on either analysis or track.
     </p>
 
     <h4>Strand comparison (full and DNase-I only)</h4>
     <p>
-      Overlays the combined (both-strand), + strand, and − strand aggregate
-      profiles for the same TF on one chart, instead of viewing each
-      separately — the fastest way to see whether the strand-split tracks
-      above actually differ from each other and from the combined profile.
-      This is a single overlay chart, not a deepTools profile/heatmap pair,
-      so there's no heatmap for it (the heatmap panel will say "not
-      available" when this track is selected — that's expected, not
-      missing data).
+      Overlays the + strand and − strand aggregate profiles for the same TF
+      on one chart, instead of viewing each separately — the fastest way to
+      see whether the two strand-split tracks above actually differ from
+      each other. Available for both Motif accessibility and Nucleosome
+      detection. This is a single overlay chart, not a deepTools
+      profile/heatmap pair, so there's no heatmap for it (the heatmap panel
+      will say "not available" when this track is selected — that's
+      expected, not missing data).
     </p>
   </section>
 </main>
@@ -393,8 +395,16 @@
       full: {}, dnase: {}, mnase: {},
       full_plus: {}, full_minus: {}, dnase_plus: {}, dnase_minus: {},
     },
-    nucleosome: { full: {}, dnase: {}, mnase: {} },
+    nucleosome: {
+      full: {}, dnase: {}, mnase: {},
+      full_plus: {}, full_minus: {}, dnase_plus: {}, dnase_minus: {},
+    },
   };
+  // The strand-comparison tracks (full_compare/dnase_compare) don't have
+  // their own oscillation data -- they're a repackaging of the existing
+  // combined/+/- data as one overlay image, not a new region set. Sorting
+  // by oscillation score on those tracks reuses the combined track's score.
+  const TRACK_OSC_ALIAS = { full_compare: 'full', dnase_compare: 'dnase' };
   async function loadOsc(analysis, track, path) {
     try {
       const text = await fetch(path, { cache: 'no-cache' }).then(r => r.ok ? r.text() : '');
@@ -417,6 +427,10 @@
     loadOsc('motif', 'full_minus', 'data/oscillation_motif_full_minus.tsv'),
     loadOsc('motif', 'dnase_plus', 'data/oscillation_motif_dnase_plus.tsv'),
     loadOsc('motif', 'dnase_minus', 'data/oscillation_motif_dnase_minus.tsv'),
+    loadOsc('nucleosome', 'full_plus', 'data/oscillation_nucleosome_full_plus.tsv'),
+    loadOsc('nucleosome', 'full_minus', 'data/oscillation_nucleosome_full_minus.tsv'),
+    loadOsc('nucleosome', 'dnase_plus', 'data/oscillation_nucleosome_dnase_plus.tsv'),
+    loadOsc('nucleosome', 'dnase_minus', 'data/oscillation_nucleosome_dnase_minus.tsv'),
   ]);
 
   const analysisSel = document.getElementById('analysisType');
@@ -429,30 +443,34 @@
   const heatmapImg = document.getElementById('heatmapImg');
 
   // Strand-split and strand-comparison tracks currently only exist for
-  // Motif accessibility -- strand is relative to the motif itself, and
-  // Nucleosome detection strand tracks (reusing the same ChIP-confirmed
-  // motif instances) are still being generated as of this commit.
+  // Strand-split/comparison tracks are relative to the JASPAR motif hit
+  // that overlaps each ChIP-seq peak -- available for both Motif
+  // accessibility (motif-centered) and Nucleosome detection (peak-centered,
+  // but restricted to and split by the same ChIP-confirmed motif instances).
+  // Not yet available for the annotated-source analyses.
   const STRAND_TRACKS = [
     'full_plus', 'full_minus', 'dnase_plus', 'dnase_minus',
     'full_compare', 'dnase_compare',
   ];
+  const STRAND_CAPABLE_ANALYSES = ['motif', 'nucleosome'];
 
   function updateTrackOptions() {
-    const isMotif = analysisSel.value === 'motif';
+    const supportsStrand = STRAND_CAPABLE_ANALYSES.includes(analysisSel.value);
     for (const opt of trackSel.querySelectorAll('option')) {
       if (STRAND_TRACKS.includes(opt.value)) {
-        opt.hidden = !isMotif;
-        opt.disabled = !isMotif;
+        opt.hidden = !supportsStrand;
+        opt.disabled = !supportsStrand;
       }
     }
-    if (!isMotif && STRAND_TRACKS.includes(trackSel.value)) {
+    if (!supportsStrand && STRAND_TRACKS.includes(trackSel.value)) {
       trackSel.value = 'full';
     }
   }
 
   function currentOscMap() {
     const byAnalysis = oscData[analysisSel.value] || {};
-    return byAnalysis[trackSel.value] || {};
+    const track = TRACK_OSC_ALIAS[trackSel.value] || trackSel.value;
+    return byAnalysis[track] || {};
   }
 
   function currentTfList() {
