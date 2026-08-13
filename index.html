@@ -242,6 +242,7 @@
         <option value="dnase_minus">DNase-I only, − strand</option>
         <option value="full_compare">Full, strand comparison</option>
         <option value="dnase_compare">DNase-I only, strand comparison</option>
+        <option value="full_ctcf_excluded">Full, CTCF co-binding excluded</option>
       </select>
     </div>
     <div class="control">
@@ -352,6 +353,22 @@
       Nucleosome detection) -- deliberately motif-agnostic, so it's the
       only place here where the histone marks and other non-motif targets
       show up. Full track (h.bw) only so far.
+    </p>
+
+    <h4>Full, CTCF co-binding excluded (Annotated motif analysis only)</h4>
+    <p>
+      A motif instance is dropped if any CTCF ChIP-seq peak center (union
+      of all 4 CTCF replicate peak files, reused from the CTCF-excluded
+      Nucleosome detection work) falls within its own +/-3000bp aggregation
+      window -- not just literal overlap, so a CTCF site nearby but not
+      directly overlapping the motif still counts as confounding
+      co-binding. Guards against mistaking CTCF's own strong nucleosome-
+      phasing signal (CTCF is the strongest known phaser of nucleosomes in
+      the genome) for a TF's own effect, when the two happen to bind near
+      each other. CTCF itself isn't part of this track. The fraction
+      excluded varies a lot by TF -- e.g. ZNF143 loses 73% of its motif
+      instances to CTCF proximity, YY1 more than half -- worth checking
+      per-TF before reading too much into a small surviving n.
     </p>
 
     <h4>Nucleosome detection, CTCF-excluded</h4>
@@ -475,7 +492,7 @@
       full: {}, dnase: {}, mnase: {},
       full_plus: {}, full_minus: {}, dnase_plus: {}, dnase_minus: {},
     },
-    annot_motif: { full: {} },
+    annot_motif: { full: {}, full_ctcf_excluded: {} },
     annot_nonmotif: { full: {} },
     nucleosome_no_ctcf: { full: {}, mnase: {} },
     nucleosome_mnase_seq: { full: {} },
@@ -513,6 +530,7 @@
     loadOsc('nucleosome', 'dnase_minus', 'data/oscillation_nucleosome_dnase_minus.tsv'),
     loadOsc('annot_motif', 'full', 'data/oscillation_annot_motif_full.tsv'),
     loadOsc('annot_nonmotif', 'full', 'data/oscillation_annot_nonmotif_full.tsv'),
+    loadOsc('annot_motif', 'full_ctcf_excluded', 'data/oscillation_annot_motif_full_ctcf_excluded.tsv'),
     loadOsc('nucleosome_no_ctcf', 'full', 'data/oscillation_nucleosome_no_ctcf_full.tsv'),
     loadOsc('nucleosome_no_ctcf', 'mnase', 'data/oscillation_nucleosome_no_ctcf_mnase.tsv'),
     loadOsc('nucleosome_mnase_seq', 'full', 'data/oscillation_nucleosome_mnase_seq_full.tsv'),
@@ -533,21 +551,34 @@
   // accessibility (motif-centered) and Nucleosome detection (peak-centered,
   // but restricted to and split by the same ChIP-confirmed motif instances).
   // Not yet available for the annotated-source analyses.
-  const STRAND_TRACKS = [
-    'full_plus', 'full_minus', 'dnase_plus', 'dnase_minus',
-    'full_compare', 'dnase_compare',
-  ];
-  const STRAND_CAPABLE_ANALYSES = ['motif', 'nucleosome'];
+  // Tracks that only make sense for (or have only been computed for)
+  // specific analyses. Any track NOT listed here is assumed available for
+  // every analysis, falling back to "not available" per TF/track/analysis
+  // combination missing data (the normal img-not-found fallback) rather
+  // than being hidden outright.
+  const TRACK_RESTRICTIONS = {
+    full_plus: ['motif', 'nucleosome'],
+    full_minus: ['motif', 'nucleosome'],
+    dnase_plus: ['motif', 'nucleosome'],
+    dnase_minus: ['motif', 'nucleosome'],
+    full_compare: ['motif', 'nucleosome'],
+    dnase_compare: ['motif', 'nucleosome'],
+    // CTCF-co-binding-excluded motif instances -- only meaningful for
+    // Annotated motif analysis (reuses its own motif-hit region set and
+    // window; CTCF itself isn't part of this track).
+    full_ctcf_excluded: ['annot_motif'],
+  };
 
   function updateTrackOptions() {
-    const supportsStrand = STRAND_CAPABLE_ANALYSES.includes(analysisSel.value);
     for (const opt of trackSel.querySelectorAll('option')) {
-      if (STRAND_TRACKS.includes(opt.value)) {
-        opt.hidden = !supportsStrand;
-        opt.disabled = !supportsStrand;
-      }
+      const allowed = TRACK_RESTRICTIONS[opt.value];
+      if (!allowed) continue;
+      const ok = allowed.includes(analysisSel.value);
+      opt.hidden = !ok;
+      opt.disabled = !ok;
     }
-    if (!supportsStrand && STRAND_TRACKS.includes(trackSel.value)) {
+    const restriction = TRACK_RESTRICTIONS[trackSel.value];
+    if (restriction && !restriction.includes(analysisSel.value)) {
       trackSel.value = 'full';
     }
   }
@@ -616,6 +647,7 @@
       full_plus: 'full h.bw, + strand', full_minus: 'full h.bw, − strand',
       dnase_plus: 'DNase-I only, + strand', dnase_minus: 'DNase-I only, − strand',
       full_compare: 'full h.bw, strand comparison', dnase_compare: 'DNase-I only, strand comparison',
+      full_ctcf_excluded: 'full h.bw, CTCF co-binding excluded',
     };
     const trackLabel = trackLabels[track] || track;
     const analysisLabels = {
