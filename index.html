@@ -215,18 +215,15 @@
 <body>
 <header>
   <h1>GM12878 TF Accessibility Profiles</h1>
-  <p>Aggregate Hi-C-derived accessibility signal around transcription factor binding sites — full mixed-enzyme pool vs. DNase-I-only vs. MNase-only subsets</p>
+  <p>Aggregate accessibility signal around transcription factor binding sites in GM12878 — motif-centered analysis from a pre-annotated ChIP-seq peak source, plus an independent real MNase-seq replication check</p>
 </header>
 <main>
   <div class="controls">
     <div class="control">
       <label for="analysisType">Analysis</label>
       <select id="analysisType">
-        <option value="motif">Motif accessibility (motif-verified ChIP-seq peaks)</option>
-        <option value="nucleosome">Nucleosome detection (ChIP-seq peaks only)</option>
-        <option value="annot_motif">Annotated motif analysis (pre-annotated motif hits)</option>
-        <option value="annot_nonmotif">Annotated non-motif analysis (raw peaks, annotated source)</option>
-        <option value="nucleosome_mnase_seq">Nucleosome detection, CTCF-excluded (real MNase-seq)</option>
+        <option value="annot_motif">Annotated motif analysis</option>
+        <option value="nucleosome_mnase_seq">MNase-seq analysis</option>
       </select>
     </div>
     <div class="control">
@@ -242,8 +239,6 @@
         <option value="full_compare">Full, strand comparison</option>
         <option value="dnase_compare">DNase-I only, strand comparison</option>
         <option value="full_ctcf_excluded">Full, CTCF co-binding excluded</option>
-        <option value="full_ctcf_excluded_tfs">Full, CTCF-excluded (non-CTCF TFs)</option>
-        <option value="mnase_ctcf_excluded_tfs">MNase-cutter subset, CTCF-excluded (non-CTCF TFs)</option>
       </select>
     </div>
     <div class="control">
@@ -257,10 +252,9 @@
             accessibility signal flanking the reference point, after
             excluding the central ±200bp and detrending a local baseline.
             Measures genuine periodic nucleosome-phasing ripples, not generic
-            signal noise/variance. Computed independently for each analysis
-            from its own profile shape — motif-centered for Motif
-            accessibility, ChIP-seq-peak-centered for Nucleosome detection —
-            so scores are not comparable across the two.
+            signal noise/variance. Computed independently per analysis and
+            track from that track's own profile shape, so scores aren't
+            comparable across analyses.
           </span>
         </span>
       </label>
@@ -318,49 +312,28 @@
       fading to the weakest/noisiest sites at the bottom.
     </p>
 
-    <h4>Motif accessibility vs. Nucleosome detection</h4>
+    <h4>Annotated motif analysis</h4>
     <p>
-      <strong>Motif accessibility</strong>: regions are JASPAR motif
-      instances for the selected TF, filtered to only the instances that
-      overlap a real ChIP-seq peak for that TF ("motif-verified ChIP-seq
-      peaks") centered on the motif's own predicted location, ±3000bp
-      flank, 25bp bins.
-      <strong>Nucleosome detection</strong>: regions are the TF's raw
-      ChIP-seq peaks with no motif filtering,
-      centered on the peak's own summit. Because the reference point, flank, and bin size all
-      differ between the two, they aren't directly comparable
-      position-for-position, and their
-      oscillation scores are computed independently.
-    </p>
-
-    <h4>Annotated motif analysis / Annotated non-motif analysis</h4>
-    <p>
-      Both use a different ChIP-seq peak source
+      Regions are motif instances for the selected TF from a pre-annotated
+      ChIP-seq peak source
       (<code>ENCODE_intact_Hi-C_shared_data/ChIP-Seq/GM12878</code>) where
-      each peak is already annotated with whether it contains a
-      high-confidence motif hit, its coordinates, and its strand -- no
-      separate JASPAR-genome-scan-plus-bedtools-intersect step needed, and
-      substantially higher hit rates than the from-scratch pipeline above
-      (median ~40% of peaks with a hit here, vs. single digits for most TFs
-      in Motif accessibility). Of the 167 genes available in this source,
-      73 are histone marks, Pol II phospho-isoforms, or general chromatin
-      cofactors (e.g. H3K27ac, EP300, RAD21) with no sequence-specific
-      motif at all -- real ChIP-seq experiments with real peaks, just
-      nothing to center a motif view on. <strong>Annotated motif
-      analysis</strong> covers the 94 genes with at least one
-      high-confidence hit, centered on the motif itself (same parameters as
-      Motif accessibility). <strong>Annotated non-motif analysis</strong>
-      covers all 167 genes, centered on the raw peak (same parameters as
-      Nucleosome detection) -- deliberately motif-agnostic, so it's the
-      only place here where the histone marks and other non-motif targets
-      show up. Full track (h.bw) only so far.
+      each peak already carries whether it contains a high-confidence
+      motif hit, that motif's coordinates, and its strand -- no separate
+      JASPAR-genome-scan-plus-bedtools-intersect step needed, and
+      substantially higher hit rates than a from-scratch scan-and-intersect
+      pipeline would give (median ~40% of peaks with a hit). Centered on
+      the motif's own predicted location, ±3000bp flank, 25bp bins. Of the
+      167 genes available in this source, 73 are histone marks, Pol II
+      phospho-isoforms, or general chromatin cofactors (e.g. H3K27ac,
+      EP300, RAD21) with no sequence-specific motif at all, so this
+      analysis covers the 94 genes with at least one high-confidence hit.
     </p>
 
-    <h4>Full, CTCF co-binding excluded (Annotated motif analysis only)</h4>
+    <h4>Full, CTCF co-binding excluded</h4>
     <p>
       A motif instance is dropped if any CTCF ChIP-seq peak center (union
-      of all 4 CTCF replicate peak files, reused from the CTCF-excluded
-      Nucleosome detection work) falls within its own +/-3000bp aggregation
+      of all 4 CTCF replicate peak files, reused from earlier CTCF-exclusion
+      work) falls within its own +/-3000bp aggregation
       window -- not just literal overlap, so a CTCF site nearby but not
       directly overlapping the motif still counts as confounding
       co-binding. Guards against mistaking CTCF's own strong nucleosome-
@@ -372,51 +345,42 @@
       per-TF before reading too much into a small surviving n.
     </p>
 
-    <h4>Full / MNase-cutter subset, CTCF-excluded (non-CTCF TFs) (Nucleosome detection only)</h4>
+    <h4>MNase-seq analysis</h4>
     <p>
-      CTCF is the strongest known positioner of phased nucleosomes in the human genome, so any
-      nucleosome-phasing ripple seen at a TF's ChIP-seq peaks could really be coming from a
-      nearby CTCF site rather than the TF itself. These two tracks re-run Nucleosome detection's
-      same peak-center-referenced method, but on a fresh, larger peak set (155 non-CTCF,
-      non-histone-mark targets from
-      <code>ENCODE_intact_Hi-C_shared_data/ChIP-Seq/GM12878</code>) with every peak that has a
-      CTCF peak center within its own +/-2000bp aggregation window removed first (not just
-      literal footprint overlap with CTCF -- any CTCF site close enough to potentially
-      contribute to the flanking signal). <strong>Full, CTCF-excluded (non-CTCF TFs)</strong> is
-      the same h.bw used elsewhere; <strong>MNase-cutter subset, CTCF-excluded (non-CTCF
-      TFs)</strong> is the Hi-C MNase-cutter subset -- both still Hi-C-derived, so close
-      agreement between them mainly reflects that they share most of the same underlying
-      sequencing reads, not independent confirmation. Because this 155-TF region set differs
-      from Nucleosome detection's other tracks (86 TFs, includes CTCF), the "(n = ...)" peak
-      count shown for these two tracks is this set's own post-exclusion count, not the other
-      tracks' count -- e.g. RAD21 drops from 48,495 to 6,944 peaks once CTCF-proximal ones are
-      removed.
-    </p>
-
-    <h4>Nucleosome detection, CTCF-excluded (real MNase-seq)</h4>
-    <p>
-      The same CTCF-excluded 155-TF peak set as the two tracks above, but aggregated against a
-      genuinely independent signal source: ENCODE <code>ENCSR000CXP</code>, a real, standalone
-      MNase-seq experiment on GM12878 (Snyder lab/Stanford, single-end SOLiD sequencing,
-      released 2011), lifted from hg19 to hg38 to match every other track here. This is the
-      orthogonal replication check -- unlike the two Hi-C-derived tracks, this track shares no
-      reads with the Hi-C data, so agreement between this and Nucleosome detection's Full,
-      CTCF-excluded (non-CTCF TFs) track is real evidence that non-CTCF nucleosome phasing isn't
-      a Hi-C- or CTCF-specific artifact. Caveat: this dataset is far lower-throughput and much
-      older than the Hi-C-derived tracks, and the hg19-&gt;hg38 liftOver introduces some
-      coordinate-precision loss -- both worth weighing when interpreting any disagreement.
+      A peak-center-referenced aggregate (same method as Annotated motif
+      analysis's peak-based tracks), on a fresh, larger peak set (155
+      non-CTCF, non-histone-mark targets from
+      <code>ENCODE_intact_Hi-C_shared_data/ChIP-Seq/GM12878</code>) with
+      every peak that has a CTCF peak center within its own ±2000bp
+      aggregation window removed first (not just literal footprint overlap
+      with CTCF -- any CTCF site close enough to potentially contribute to
+      the flanking signal; CTCF is the strongest known positioner of
+      phased nucleosomes in the human genome, so this guards against
+      attributing its signal to a nearby TF instead). Aggregated against a
+      genuinely independent signal source: ENCODE <code>ENCSR000CXP</code>,
+      a real, standalone MNase-seq experiment on GM12878 (Snyder
+      lab/Stanford, single-end SOLiD sequencing, released 2011), lifted
+      from hg19 to hg38 to match every other track here -- this track
+      shares no reads with any of the Hi-C-derived tracks, so it's a
+      genuine orthogonal replication check, not just internal consistency.
+      Caveat: this dataset is far lower-throughput and much older than the
+      Hi-C-derived tracks, and the hg19-&gt;hg38 liftOver introduces some
+      coordinate-precision loss.
     </p>
     <p>
-      <strong>Result:</strong> oscillation scores from this track and Nucleosome detection's
-      Full, CTCF-excluded (non-CTCF TFs) track correlate significantly across all 155 TFs
-      (Spearman &rho; = 0.336, p = 2.0&times;10<sup>-5</sup>; Pearson r = 0.498, p =
-      4.2&times;10<sup>-11</sup>) -- moderate, not perfect, agreement. Most top-ranked TFs on
-      that track (BATF, BCL11A, SPI1, REST, IRF4, RUNX3, JUNB) also score highly here, several
-      even higher (e.g. SPI1 0.594 &rarr; 0.809, RUNX3 0.431 &rarr; 0.781) -- real evidence the
-      phasing signal isn't Hi-C-specific. The clearest outlier is SMARCA5 (0.375 on the Full
-      track vs. 0.091 here), worth treating with caution given the two tracks disagree sharply
-      on it. See <a href="plots/comparison/full_vs_mnase_seq_comparison.png">the full comparison
-      scatter plot</a> for all 155 TFs.
+      <strong>Result:</strong> oscillation scores from this track correlate
+      significantly with the same CTCF-excluded peak set's Hi-C-derived
+      full-track oscillation scores, across all 155 TFs (Spearman &rho; =
+      0.336, p = 2.0&times;10<sup>-5</sup>; Pearson r = 0.498, p =
+      4.2&times;10<sup>-11</sup>) -- moderate, not perfect, agreement. Most
+      top-ranked TFs there (BATF, BCL11A, SPI1, REST, IRF4, RUNX3, JUNB)
+      also score highly here, several even higher (e.g. SPI1 0.594 &rarr;
+      0.809, RUNX3 0.431 &rarr; 0.781) -- real evidence the phasing signal
+      isn't Hi-C-specific. The clearest outlier is SMARCA5 (0.375 on the
+      Hi-C-derived track vs. 0.091 here), worth treating with caution given
+      the two disagree sharply on it. See
+      <a href="plots/comparison/full_vs_mnase_seq_comparison.png">the full
+      comparison scatter plot</a> for all 155 TFs.
     </p>
 
     <h4>Full vs. DNase-I only vs. MNase-only track</h4>
@@ -436,25 +400,19 @@
 
     <h4>Strand-split tracks (+ strand / − strand, full and DNase-I only)</h4>
     <p>
-      The motif instances are split by the strand of the JASPAR motif-scan
-      hit itself (not a ChIP-seq peak strand — narrowPeak entries here
-      don't carry one) before aggregating. deepTools orients minus-strand
-      regions when building the matrix, so both tracks already plot in a
-      consistent 5'→3' direction relative to the motif — a "+ strand"
-      instance and a "− strand" instance of the same motif are shown the
-      same way round, not mirror images of each other by construction. So a
-      real difference between the two strand tracks reflects genuine
-      strand-linked asymmetry (biological or technical) in the flanking
-      accessibility signal, not a coordinate artifact. For Motif
-      accessibility this is the motif-centered pipeline as usual; for
-      Nucleosome detection (which has no strand of its own — raw ChIP-seq
-      peaks aren't stranded) this instead reuses the same ChIP-confirmed
-      motif instances, split by strand, but aggregated with Nucleosome
-      detection's own window/bin parameters, so its region set (and N) is
-      narrower than the base "chip peaks only" track. Not yet computed for
-      the MNase-only track. Two TFs (FOS, RXRA) have too few motif-verified
-      peaks to produce a minus-strand instance at all, so their "− strand"
-      view has no plot, on either analysis or track.
+      Motif instances are split by the strand already recorded for each
+      motif hit in the pre-annotated ChIP-seq peak source (not a ChIP-seq
+      peak strand — narrowPeak entries don't carry one) before aggregating.
+      deepTools orients minus-strand regions when building the matrix, so
+      both tracks already plot in a consistent 5'→3' direction relative to
+      the motif — a "+ strand" instance and a "− strand" instance of the
+      same motif are shown the same way round, not mirror images of each
+      other by construction. So a real difference between the two strand
+      tracks reflects genuine strand-linked asymmetry (biological or
+      technical) in the flanking accessibility signal, not a coordinate
+      artifact. Not yet computed for the MNase-only track. A gene with too
+      few motif instances on one strand may have no plot for that "− strand"
+      (or, rarely, "+ strand") view.
     </p>
 
     <h4>Strand comparison (full and DNase-I only)</h4>
@@ -462,8 +420,7 @@
       Overlays the + strand and − strand aggregate profiles for the same TF
       on one chart, instead of viewing each separately — the fastest way to
       see whether the two strand-split tracks above actually differ from
-      each other. Available for both Motif accessibility and Nucleosome
-      detection. This is a single overlay chart, not a deepTools
+      each other. This is a single overlay chart, not a deepTools
       profile/heatmap pair, so there's no heatmap for it (the heatmap panel
       will say "not available" when this track is selected — that's
       expected, not missing data).
@@ -474,72 +431,33 @@
 <script>
 (async function () {
   const manifest = await fetch('data/manifest.json', { cache: 'no-cache' }).then(r => r.json());
-  // Each analysis has its own TF/gene list -- Motif accessibility and
-  // Nucleosome detection share the original 86, but the annotated-source
-  // analyses cover different (and different-sized) gene sets: 94 genes
-  // with a real motif hit for Annotated motif analysis, all 167 genes
-  // available in that source for Annotated non-motif analysis.
   const TF_LISTS = {
-    motif: manifest.tfs,
-    // Nucleosome detection's own TF list is the union of the original 86
-    // (its 3 original tracks: full/dnase/mnase + strand variants) and the
-    // 155 non-CTCF TFs the two CTCF-excluded tracks below cover (only CTCF
-    // itself, deliberately excluded from those two tracks, isn't in both).
-    nucleosome: manifest.tfs_nucleosome || manifest.tfs,
     annot_motif: manifest.tfs_annot_motif || [],
-    annot_nonmotif: manifest.tfs_annot_nonmotif || [],
     nucleosome_mnase_seq: manifest.tfs_nucleosome_mnase_seq || [],
   };
   function currentAllTfs() {
     return TF_LISTS[analysisSel.value] || [];
   }
   const regionCounts = {
-    motif: manifest.n_motif || {}, nucleosome: manifest.n_nucleosome || {},
-    annot_motif: manifest.n_annot_motif || {}, annot_nonmotif: manifest.n_annot_nonmotif || {},
+    annot_motif: manifest.n_annot_motif || {},
     nucleosome_mnase_seq: manifest.n_nucleosome_mnase_seq || {},
   };
-  // Per-track overrides for the "(n = ...)" count shown in the TF dropdown.
-  // Needed because Nucleosome detection's two CTCF-excluded tracks use a
-  // different, per-track peak count (post-CTCF-exclusion) than its other
-  // tracks (full/dnase/mnase etc., all sharing regionCounts.nucleosome
-  // above) -- without this, those two tracks would show the original,
-  // pre-exclusion peak count, which is actively wrong (e.g. RAD21 drops
-  // from 48,495 to 6,944 peaks after CTCF exclusion).
-  const regionCountsByTrack = {
-    nucleosome: {
-      full_ctcf_excluded_tfs: manifest.n_nucleosome_ctcf_excluded_tfs || {},
-      mnase_ctcf_excluded_tfs: manifest.n_nucleosome_ctcf_excluded_tfs || {},
-    },
-  };
-  function regionCountFor(analysis, track, tf) {
-    const override = (regionCountsByTrack[analysis] || {})[track];
-    if (override && override[tf] !== undefined) return override[tf];
-    return (regionCounts[analysis] || {})[tf];
-  }
 
-  // Oscillation score is specific to *which profile shape it's computed from*
-  // -- motif-centered (3000bp flank, 25bp bins) and ChIP-seq-peak-centered
-  // (2000bp flank, 10bp bins) are different measurements of the same TF, so
-  // each analysis gets its own independently-computed score/ranking rather
-  // than sharing one.
+  // Oscillation score is specific to *which profile shape it's computed
+  // from* -- computed independently per analysis/track, from that
+  // track's own profile shape.
   const oscData = {
-    motif: {
+    annot_motif: {
       full: {}, dnase: {}, mnase: {},
       full_plus: {}, full_minus: {}, dnase_plus: {}, dnase_minus: {},
+      full_ctcf_excluded: {},
     },
-    nucleosome: {
-      full: {}, dnase: {}, mnase: {},
-      full_plus: {}, full_minus: {}, dnase_plus: {}, dnase_minus: {},
-      full_ctcf_excluded_tfs: {}, mnase_ctcf_excluded_tfs: {},
-    },
-    annot_motif: { full: {}, full_ctcf_excluded: {} },
-    annot_nonmotif: { full: {} },
     nucleosome_mnase_seq: { full: {} },
   };
   // The strand-comparison tracks (full_compare/dnase_compare) don't have
   // their own oscillation data -- they're a repackaging of the existing
-  // combined/+/- data as one overlay image, not a new region set. Sorting
-  // by oscillation score on those tracks reuses the combined track's score.
+  // +/- data as one overlay image, not a new region set. Sorting by
+  // oscillation score on those tracks reuses the combined track's score.
   const TRACK_OSC_ALIAS = { full_compare: 'full', dnase_compare: 'dnase' };
   async function loadOsc(analysis, track, path) {
     try {
@@ -553,25 +471,14 @@
     } catch (e) { /* ranking file optional */ }
   }
   await Promise.all([
-    loadOsc('motif', 'full', 'data/oscillation_motif_full.tsv'),
-    loadOsc('motif', 'dnase', 'data/oscillation_motif_dnase.tsv'),
-    loadOsc('motif', 'mnase', 'data/oscillation_motif_mnase.tsv'),
-    loadOsc('nucleosome', 'full', 'data/oscillation_nucleosome_full.tsv'),
-    loadOsc('nucleosome', 'dnase', 'data/oscillation_nucleosome_dnase.tsv'),
-    loadOsc('nucleosome', 'mnase', 'data/oscillation_nucleosome_mnase.tsv'),
-    loadOsc('motif', 'full_plus', 'data/oscillation_motif_full_plus.tsv'),
-    loadOsc('motif', 'full_minus', 'data/oscillation_motif_full_minus.tsv'),
-    loadOsc('motif', 'dnase_plus', 'data/oscillation_motif_dnase_plus.tsv'),
-    loadOsc('motif', 'dnase_minus', 'data/oscillation_motif_dnase_minus.tsv'),
-    loadOsc('nucleosome', 'full_plus', 'data/oscillation_nucleosome_full_plus.tsv'),
-    loadOsc('nucleosome', 'full_minus', 'data/oscillation_nucleosome_full_minus.tsv'),
-    loadOsc('nucleosome', 'dnase_plus', 'data/oscillation_nucleosome_dnase_plus.tsv'),
-    loadOsc('nucleosome', 'dnase_minus', 'data/oscillation_nucleosome_dnase_minus.tsv'),
     loadOsc('annot_motif', 'full', 'data/oscillation_annot_motif_full.tsv'),
-    loadOsc('annot_nonmotif', 'full', 'data/oscillation_annot_nonmotif_full.tsv'),
+    loadOsc('annot_motif', 'dnase', 'data/oscillation_annot_motif_dnase.tsv'),
+    loadOsc('annot_motif', 'mnase', 'data/oscillation_annot_motif_mnase.tsv'),
+    loadOsc('annot_motif', 'full_plus', 'data/oscillation_annot_motif_full_plus.tsv'),
+    loadOsc('annot_motif', 'full_minus', 'data/oscillation_annot_motif_full_minus.tsv'),
+    loadOsc('annot_motif', 'dnase_plus', 'data/oscillation_annot_motif_dnase_plus.tsv'),
+    loadOsc('annot_motif', 'dnase_minus', 'data/oscillation_annot_motif_dnase_minus.tsv'),
     loadOsc('annot_motif', 'full_ctcf_excluded', 'data/oscillation_annot_motif_full_ctcf_excluded.tsv'),
-    loadOsc('nucleosome', 'full_ctcf_excluded_tfs', 'data/oscillation_nucleosome_full_ctcf_excluded_tfs.tsv'),
-    loadOsc('nucleosome', 'mnase_ctcf_excluded_tfs', 'data/oscillation_nucleosome_mnase_ctcf_excluded_tfs.tsv'),
     loadOsc('nucleosome_mnase_seq', 'full', 'data/oscillation_nucleosome_mnase_seq_full.tsv'),
   ]);
 
@@ -584,34 +491,18 @@
   const profileImg = document.getElementById('profileImg');
   const heatmapImg = document.getElementById('heatmapImg');
 
-  // Strand-split and strand-comparison tracks currently only exist for
-  // Strand-split/comparison tracks are relative to the JASPAR motif hit
-  // that overlaps each ChIP-seq peak -- available for both Motif
-  // accessibility (motif-centered) and Nucleosome detection (peak-centered,
-  // but restricted to and split by the same ChIP-confirmed motif instances).
-  // Not yet available for the annotated-source analyses.
-  // Tracks that only make sense for (or have only been computed for)
-  // specific analyses. Any track NOT listed here is assumed available for
-  // every analysis, falling back to "not available" per TF/track/analysis
-  // combination missing data (the normal img-not-found fallback) rather
-  // than being hidden outright.
+  // Tracks that only make sense for (or have only been computed for) a
+  // specific analysis. Any track NOT listed here (i.e. "full") is assumed
+  // universal. Everything below is Annotated motif analysis-only right
+  // now -- MNase-seq analysis has exactly one track (the real MNase-seq
+  // signal itself), so every other track option collapses back to "full"
+  // when it's selected.
   const TRACK_RESTRICTIONS = {
-    full_plus: ['motif', 'nucleosome'],
-    full_minus: ['motif', 'nucleosome'],
-    dnase_plus: ['motif', 'nucleosome'],
-    dnase_minus: ['motif', 'nucleosome'],
-    full_compare: ['motif', 'nucleosome'],
-    dnase_compare: ['motif', 'nucleosome'],
-    // CTCF-co-binding-excluded motif instances -- only meaningful for
-    // Annotated motif analysis (reuses its own motif-hit region set and
-    // window; CTCF itself isn't part of this track).
+    dnase: ['annot_motif'], mnase: ['annot_motif'],
+    full_plus: ['annot_motif'], full_minus: ['annot_motif'],
+    dnase_plus: ['annot_motif'], dnase_minus: ['annot_motif'],
+    full_compare: ['annot_motif'], dnase_compare: ['annot_motif'],
     full_ctcf_excluded: ['annot_motif'],
-    // CTCF-proximal-peak-excluded, non-CTCF-TF peak set -- only meaningful
-    // for Nucleosome detection (peak-center-referenced method; these two
-    // tracks use their own 155-TF region set, folded into Nucleosome
-    // detection's TF list via tfs_nucleosome/regionCountsByTrack above).
-    full_ctcf_excluded_tfs: ['nucleosome'],
-    mnase_ctcf_excluded_tfs: ['nucleosome'],
   };
 
   function updateTrackOptions() {
@@ -658,7 +549,7 @@
       const opt = document.createElement('option');
       opt.value = tf;
       const osc = oscMap[tf];
-      const n = regionCountFor(analysisSel.value, trackSel.value, tf);
+      const n = (regionCounts[analysisSel.value] || {})[tf];
       const nPart = n !== undefined ? ` (n = ${n})` : '';
       opt.textContent = (sortSel.value === 'osc' && osc)
         ? `${tf}  (score ${osc.score.toFixed(3)})${nPart}`
@@ -693,14 +584,11 @@
       dnase_plus: 'DNase-I only, + strand', dnase_minus: 'DNase-I only, − strand',
       full_compare: 'full h.bw, strand comparison', dnase_compare: 'DNase-I only, strand comparison',
       full_ctcf_excluded: 'full h.bw, CTCF co-binding excluded',
-      full_ctcf_excluded_tfs: 'full h.bw, CTCF-excluded (non-CTCF TFs)',
-      mnase_ctcf_excluded_tfs: 'MNase-cutter subset, CTCF-excluded (non-CTCF TFs)',
     };
     const trackLabel = trackLabels[track] || track;
     const analysisLabels = {
-      motif: 'Motif accessibility', nucleosome: 'Nucleosome detection',
-      annot_motif: 'Annotated motif analysis', annot_nonmotif: 'Annotated non-motif analysis',
-      nucleosome_mnase_seq: 'Nucleosome detection, CTCF-excluded (real MNase-seq)',
+      annot_motif: 'Annotated motif analysis',
+      nucleosome_mnase_seq: 'MNase-seq analysis',
     };
     const analysisLabel = analysisLabels[analysisSel.value] || analysisSel.value;
     tfTitle.textContent = `${tf} — ${analysisLabel} (${trackLabel})`;
@@ -714,9 +602,8 @@
     setImgWithFallback(heatmapImg, imgPath('heatmap'));
   }
 
-  // Hide any Analysis option whose TF list hasn't been populated yet
-  // (e.g. Annotated non-motif analysis while that pipeline is still
-  // running) rather than showing a dropdown with no TFs to pick from.
+  // Hide any Analysis option whose TF list hasn't been populated yet,
+  // rather than showing a dropdown with no TFs to pick from.
   function hideEmptyAnalyses() {
     for (const opt of analysisSel.querySelectorAll('option')) {
       const empty = (TF_LISTS[opt.value] || []).length === 0;
@@ -724,7 +611,7 @@
       opt.disabled = empty;
     }
     if ((TF_LISTS[analysisSel.value] || []).length === 0) {
-      analysisSel.value = 'motif';
+      analysisSel.value = 'annot_motif';
     }
   }
 
