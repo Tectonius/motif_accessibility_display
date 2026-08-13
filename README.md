@@ -32,24 +32,30 @@ and TF.
 
 ## CTCF-excluded nucleosome detection (non-CTCF TFs)
 
-Two additional analyses address a confound in the base Nucleosome detection
-analysis above: CTCF is itself the strongest known positioner of phased
-nucleosomes in the human genome, so any phasing seen at another TF's peaks
-could really be coming from a nearby CTCF site rather than the TF itself.
+Two additional **tracks under Nucleosome detection**, plus one additional
+**analysis**, address a confound in Nucleosome detection's base tracks: CTCF
+is itself the strongest known positioner of phased nucleosomes in the human
+genome, so any phasing seen at another TF's peaks could really be coming
+from a nearby CTCF site rather than the TF itself. All three use the same
+fresh, larger peak set: 155 non-CTCF, non-histone-mark targets from
+`ENCODE_intact_Hi-C_shared_data/ChIP-Seq/GM12878`, with every peak that has
+a CTCF peak center within its own ±2000bp aggregation window removed first.
 
-- **Nucleosome detection, CTCF-excluded** (`nucleosome_no_ctcf/`) — same
-  peak-center-referenced method, but on a fresh, larger peak set (155
-  non-CTCF, non-histone-mark targets from
-  `ENCODE_intact_Hi-C_shared_data/ChIP-Seq/GM12878`) with every peak that has
-  a CTCF peak center within its own ±2000bp aggregation window removed
-  first. Two tracks: `full` (h.bw) and `mnase` (the Hi-C MNase-cutter
-  subset) — both Hi-C-derived, so agreement between them mainly reflects
-  shared underlying reads.
+- **Full, CTCF-excluded (non-CTCF TFs)** and **MNase-cutter subset,
+  CTCF-excluded (non-CTCF TFs)** — two tracks under **Nucleosome detection**
+  (not a separate analysis), reusing that analysis's own peak-center-
+  referenced method against `h.bw` and the Hi-C MNase-cutter subset
+  respectively — both Hi-C-derived, so agreement between them mainly
+  reflects shared underlying reads. Since this 155-TF peak set differs from
+  Nucleosome detection's other (86-TF) tracks, the "(n = ...)" count shown
+  for these two tracks is this set's own post-exclusion count.
 - **Nucleosome detection, CTCF-excluded (real MNase-seq)**
-  (`nucleosome_mnase_seq/`) — the same CTCF-excluded peak set, aggregated
-  against a genuinely independent signal: ENCODE `ENCSR000CXP`, a real
-  standalone GM12878 MNase-seq experiment (Snyder lab, 2011, hg19→hg38
-  liftOver), for orthogonal replication.
+  (`nucleosome_mnase_seq/`, its own analysis) — the same CTCF-excluded peak
+  set, aggregated against a genuinely independent signal: ENCODE
+  `ENCSR000CXP`, a real standalone GM12878 MNase-seq experiment (Snyder lab,
+  2011, hg19→hg38 liftOver), for orthogonal replication. Oscillation scores
+  correlate significantly with the Full, CTCF-excluded track (Spearman
+  ρ=0.336, p=2.0e-05) across all 155 TFs.
 
 See `project_outlines/ctcf_excluded_nucleosome_detection.md` in the parent
 research repo for full methodology, data sources, and caveats.
