@@ -232,6 +232,7 @@
         <option value="full">Full (mixed-enzyme h.bw)</option>
         <option value="dnase">DNase-I only</option>
         <option value="mnase">MNase only</option>
+        <option value="ctcf_excluded">Real MNase-seq, CTCF-excluded</option>
         <option value="full_plus">Full, + strand</option>
         <option value="full_minus">Full, − strand</option>
         <option value="dnase_plus">DNase-I only, + strand</option>
@@ -452,7 +453,7 @@
       full_plus: {}, full_minus: {}, dnase_plus: {}, dnase_minus: {},
       full_ctcf_excluded: {},
     },
-    nucleosome_mnase_seq: { full: {} },
+    nucleosome_mnase_seq: { ctcf_excluded: {} },
   };
   // The strand-comparison tracks (full_compare/dnase_compare) don't have
   // their own oscillation data -- they're a repackaging of the existing
@@ -479,7 +480,7 @@
     loadOsc('annot_motif', 'dnase_plus', 'data/oscillation_annot_motif_dnase_plus.tsv'),
     loadOsc('annot_motif', 'dnase_minus', 'data/oscillation_annot_motif_dnase_minus.tsv'),
     loadOsc('annot_motif', 'full_ctcf_excluded', 'data/oscillation_annot_motif_full_ctcf_excluded.tsv'),
-    loadOsc('nucleosome_mnase_seq', 'full', 'data/oscillation_nucleosome_mnase_seq_full.tsv'),
+    loadOsc('nucleosome_mnase_seq', 'ctcf_excluded', 'data/oscillation_nucleosome_mnase_seq_ctcf_excluded.tsv'),
   ]);
 
   const analysisSel = document.getElementById('analysisType');
@@ -498,11 +499,21 @@
   // signal itself), so every other track option collapses back to "full"
   // when it's selected.
   const TRACK_RESTRICTIONS = {
+    full: ['annot_motif'],
     dnase: ['annot_motif'], mnase: ['annot_motif'],
     full_plus: ['annot_motif'], full_minus: ['annot_motif'],
     dnase_plus: ['annot_motif'], dnase_minus: ['annot_motif'],
     full_compare: ['annot_motif'], dnase_compare: ['annot_motif'],
     full_ctcf_excluded: ['annot_motif'],
+    // MNase-seq analysis has exactly one track: the real, standalone
+    // MNase-seq signal against a CTCF-proximity-excluded peak set.
+    ctcf_excluded: ['nucleosome_mnase_seq'],
+  };
+  // Which track a switch to a given analysis should land on, when the
+  // previously-selected track isn't valid there.
+  const DEFAULT_TRACK_FOR_ANALYSIS = {
+    annot_motif: 'full',
+    nucleosome_mnase_seq: 'ctcf_excluded',
   };
 
   function updateTrackOptions() {
@@ -515,7 +526,7 @@
     }
     const restriction = TRACK_RESTRICTIONS[trackSel.value];
     if (restriction && !restriction.includes(analysisSel.value)) {
-      trackSel.value = 'full';
+      trackSel.value = DEFAULT_TRACK_FOR_ANALYSIS[analysisSel.value] || 'full';
     }
   }
 
@@ -584,6 +595,7 @@
       dnase_plus: 'DNase-I only, + strand', dnase_minus: 'DNase-I only, − strand',
       full_compare: 'full h.bw, strand comparison', dnase_compare: 'DNase-I only, strand comparison',
       full_ctcf_excluded: 'full h.bw, CTCF co-binding excluded',
+      ctcf_excluded: 'real MNase-seq, CTCF-excluded',
     };
     const trackLabel = trackLabels[track] || track;
     const analysisLabels = {
