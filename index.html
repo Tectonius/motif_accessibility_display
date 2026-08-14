@@ -224,6 +224,7 @@
       <select id="analysisType">
         <option value="annot_motif">Annotated motif analysis</option>
         <option value="nucleosome_mnase_seq">MNase-seq analysis</option>
+        <option value="hic_vs_mnase">Hi-C vs. MNase-seq comparison (CTCF-excluded)</option>
       </select>
     </div>
     <div class="control">
@@ -240,6 +241,7 @@
         <option value="full_compare">Full, strand comparison</option>
         <option value="dnase_compare">DNase-I only, strand comparison</option>
         <option value="full_ctcf_excluded">Full, CTCF co-binding excluded</option>
+        <option value="overlay">Hi-C vs. MNase-seq overlay</option>
       </select>
     </div>
     <div class="control">
@@ -384,6 +386,29 @@
       comparison scatter plot</a> for all 155 TFs.
     </p>
 
+    <h4>Hi-C vs. MNase-seq comparison (CTCF-excluded)</h4>
+    <p>
+      Overlays the two CTCF-excluded aggregate profiles for the same TF on
+      one chart, instead of comparing their oscillation scores as a single
+      number: the Hi-C h.bw signal (blue) and the real MNase-seq signal
+      (orange), both from the identical 155-TF, CTCF-proximal-peak-excluded
+      region set and identical deepTools parameters (peak-center reference
+      point, &plusmn;2000bp, 10bp bins), so the x-axis lines up exactly
+      between the two. The two signals sit on very different scales (h.bw
+      baseline ~40-60, MNase-seq baseline ~0.85-1.0), so each gets its own
+      y-axis -- Hi-C on the left in blue, MNase-seq on the right in orange,
+      matching their line colors -- rather than forcing both onto one shared
+      scale where the smaller-magnitude signal would look flat. This is a
+      single overlay chart, not a deepTools profile/heatmap pair -- there's
+      no heatmap for it (the heatmap panel will say "not available" when
+      this analysis is selected, same as the strand-comparison tracks
+      above). No independent oscillation ranking either -- sort by TF name;
+      MNase-seq analysis's own <code>ctcf_excluded</code> track carries its
+      real MNase-seq oscillation score, and the Spearman/Pearson comparison
+      numbers above (and top-TF score table) summarize how the two tracks'
+      scores relate quantitatively.
+    </p>
+
     <h4>Full vs. DNase-I only vs. MNase-only track</h4>
     <p>
       All three tracks are the same kind of measurement, a base-pair-resolution
@@ -435,6 +460,7 @@
   const TF_LISTS = {
     annot_motif: manifest.tfs_annot_motif || [],
     nucleosome_mnase_seq: manifest.tfs_nucleosome_mnase_seq || [],
+    hic_vs_mnase: manifest.tfs_hic_vs_mnase || [],
   };
   function currentAllTfs() {
     return TF_LISTS[analysisSel.value] || [];
@@ -442,6 +468,8 @@
   const regionCounts = {
     annot_motif: manifest.n_annot_motif || {},
     nucleosome_mnase_seq: manifest.n_nucleosome_mnase_seq || {},
+    // Same 155-TF CTCF-excluded peak set MNase-seq analysis uses.
+    hic_vs_mnase: manifest.n_nucleosome_ctcf_excluded_tfs || {},
   };
 
   // Oscillation score is specific to *which profile shape it's computed
@@ -454,6 +482,9 @@
       full_ctcf_excluded: {},
     },
     nucleosome_mnase_seq: { ctcf_excluded: {} },
+    // No independent oscillation ranking here -- this is an overlay of the
+    // two existing tracks' own profiles, not a new region set/metric.
+    hic_vs_mnase: { overlay: {} },
   };
   // The strand-comparison tracks (full_compare/dnase_compare) don't have
   // their own oscillation data -- they're a repackaging of the existing
@@ -508,12 +539,18 @@
     // MNase-seq analysis has exactly one track: the real, standalone
     // MNase-seq signal against a CTCF-proximity-excluded peak set.
     ctcf_excluded: ['nucleosome_mnase_seq'],
+    // Hi-C vs. MNase-seq comparison has exactly one track: the dual-y-axis
+    // overlay of the two CTCF-excluded profiles (this doesn't restrict the
+    // *other* tracks' profile.png, but "overlay" itself is meaningless
+    // outside this analysis, so it stays confined here).
+    overlay: ['hic_vs_mnase'],
   };
   // Which track a switch to a given analysis should land on, when the
   // previously-selected track isn't valid there.
   const DEFAULT_TRACK_FOR_ANALYSIS = {
     annot_motif: 'full',
     nucleosome_mnase_seq: 'ctcf_excluded',
+    hic_vs_mnase: 'overlay',
   };
 
   function updateTrackOptions() {
@@ -596,11 +633,13 @@
       full_compare: 'full h.bw, strand comparison', dnase_compare: 'DNase-I only, strand comparison',
       full_ctcf_excluded: 'full h.bw, CTCF co-binding excluded',
       ctcf_excluded: 'real MNase-seq, CTCF-excluded',
+      overlay: 'Hi-C h.bw vs. real MNase-seq, dual y-axis',
     };
     const trackLabel = trackLabels[track] || track;
     const analysisLabels = {
       annot_motif: 'Annotated motif analysis',
       nucleosome_mnase_seq: 'MNase-seq analysis',
+      hic_vs_mnase: 'Hi-C vs. MNase-seq comparison (CTCF-excluded)',
     };
     const analysisLabel = analysisLabels[analysisSel.value] || analysisSel.value;
     tfTitle.textContent = `${tf} — ${analysisLabel} (${trackLabel})`;
