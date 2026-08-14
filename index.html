@@ -140,6 +140,7 @@
   }
   @media (min-width: 900px) {
     .plots { grid-template-columns: 1fr 1fr; }
+    .plots.single-col { grid-template-columns: 1fr; }
   }
   figure {
     margin: 0;
@@ -282,7 +283,7 @@
       <img id="profileImg" alt="Aggregate profile plot">
       <figcaption>Aggregate profile</figcaption>
     </figure>
-    <figure>
+    <figure id="heatmapFigure">
       <img id="heatmapImg" alt="Heatmap plot">
       <figcaption>Per-region heatmap</figcaption>
     </figure>
@@ -399,14 +400,22 @@
       y-axis -- Hi-C on the left in blue, MNase-seq on the right in orange,
       matching their line colors -- rather than forcing both onto one shared
       scale where the smaller-magnitude signal would look flat. This is a
-      single overlay chart, not a deepTools profile/heatmap pair -- there's
-      no heatmap for it (the heatmap panel will say "not available" when
-      this analysis is selected, same as the strand-comparison tracks
-      above). No independent oscillation ranking either -- sort by TF name;
-      MNase-seq analysis's own <code>ctcf_excluded</code> track carries its
-      real MNase-seq oscillation score, and the Spearman/Pearson comparison
-      numbers above (and top-TF score table) summarize how the two tracks'
-      scores relate quantitatively.
+      single overlay chart, not a deepTools profile/heatmap pair, so
+      there's no heatmap panel shown for it at all (not just "not
+      available" -- the concept doesn't apply here, so that panel is
+      hidden rather than left as an empty placeholder). Sorting by
+      oscillation score here uses a <strong>combined</strong> score: the
+      plain average of the two source tracks' independently-computed
+      CTCF-excluded scores (Hi-C h.bw's and the real MNase-seq signal's),
+      re-ranked from scratch on that combined value rather than reusing
+      either track's own ranking -- the two don't always agree TF-for-TF
+      (see the Spearman/Pearson numbers above), so this is a genuinely
+      different ordering, not just one or the other. The real-MNase-seq
+      half of that combination is still available on its own via MNase-seq
+      analysis's <code>ctcf_excluded</code> track; the Hi-C h.bw half comes
+      from the same 155-TF CTCF-excluded peak set's own oscillation score
+      (not independently selectable elsewhere on this site), used here
+      only to build the combined ranking.
     </p>
 
     <h4>Full vs. DNase-I only vs. MNase-only track</h4>
@@ -482,9 +491,13 @@
       full_ctcf_excluded: {},
     },
     nucleosome_mnase_seq: { ctcf_excluded: {} },
-    // No independent oscillation ranking here -- this is an overlay of the
-    // two existing tracks' own profiles, not a new region set/metric.
+    // Not an independent measurement -- combined from the two source
+    // tracks' own scores below once both are loaded.
     hic_vs_mnase: { overlay: {} },
+    // Scratch slot: the Hi-C h.bw CTCF-excluded oscillation score, loaded
+    // only to combine with nucleosome_mnase_seq's real-MNase-seq score
+    // into hic_vs_mnase's combined ranking. Not a selectable analysis.
+    _hic_ctcf_excluded: { full: {} },
   };
   // The strand-comparison tracks (full_compare/dnase_compare) don't have
   // their own oscillation data -- they're a repackaging of the existing
@@ -512,7 +525,27 @@
     loadOsc('annot_motif', 'dnase_minus', 'data/oscillation_annot_motif_dnase_minus.tsv'),
     loadOsc('annot_motif', 'full_ctcf_excluded', 'data/oscillation_annot_motif_full_ctcf_excluded.tsv'),
     loadOsc('nucleosome_mnase_seq', 'ctcf_excluded', 'data/oscillation_nucleosome_mnase_seq_ctcf_excluded.tsv'),
+    loadOsc('_hic_ctcf_excluded', 'full', 'data/oscillation_nucleosome_full_ctcf_excluded_tfs.tsv'),
   ]);
+
+  // Combined Hi-C vs. MNase-seq oscillation score: the plain average of
+  // the two tracks' independently-computed CTCF-excluded scores (Hi-C
+  // h.bw and the real, standalone MNase-seq signal), for every TF present
+  // in both. Re-ranked from scratch on the combined value, since the two
+  // source rankings (each over the same 155 TFs) don't necessarily agree.
+  {
+    const hicMap = oscData._hic_ctcf_excluded.full;
+    const mnaseMap = oscData.nucleosome_mnase_seq.ctcf_excluded;
+    const combined = [];
+    for (const tf of Object.keys(hicMap)) {
+      if (mnaseMap[tf] === undefined) continue;
+      combined.push([tf, (hicMap[tf].score + mnaseMap[tf].score) / 2]);
+    }
+    combined.sort((a, b) => b[1] - a[1]);
+    combined.forEach(([tf, score], i) => {
+      oscData.hic_vs_mnase.overlay[tf] = { rank: i + 1, score, period: null, baseline: null };
+    });
+  }
 
   const analysisSel = document.getElementById('analysisType');
   const trackSel = document.getElementById('track');
@@ -522,6 +555,8 @@
   const oscInfo = document.getElementById('oscInfo');
   const profileImg = document.getElementById('profileImg');
   const heatmapImg = document.getElementById('heatmapImg');
+  const heatmapFigure = document.getElementById('heatmapFigure');
+  const plotsDiv = document.querySelector('.plots');
 
   // Tracks that only make sense for (or have only been computed for) a
   // specific analysis. Any track NOT listed here (i.e. "full") is assumed
@@ -645,12 +680,23 @@
     tfTitle.textContent = `${tf} — ${analysisLabel} (${trackLabel})`;
 
     const osc = currentOscMap()[tf];
-    oscInfo.textContent = osc
-      ? `oscillation score ${osc.score.toFixed(3)} · dominant period ${osc.period}bp · rank ${osc.rank}/${currentAllTfs().length}`
-      : '';
+    if (osc) {
+      const periodPart = (osc.period !== null && osc.period !== undefined)
+        ? ` · dominant period ${osc.period}bp` : '';
+      oscInfo.textContent = `oscillation score ${osc.score.toFixed(3)}${periodPart} · rank ${osc.rank}/${currentAllTfs().length}`;
+    } else {
+      oscInfo.textContent = '';
+    }
 
     setImgWithFallback(profileImg, imgPath('profile'));
-    setImgWithFallback(heatmapImg, imgPath('heatmap'));
+
+    // No per-region heatmap concept for the Hi-C-vs-MNase-seq overlay --
+    // it's a single dual-y-axis chart, not a deepTools profile/heatmap
+    // pair, so there's nothing to show there at all (not just "missing").
+    const hasHeatmap = track !== 'overlay';
+    heatmapFigure.style.display = hasHeatmap ? '' : 'none';
+    plotsDiv.classList.toggle('single-col', !hasHeatmap);
+    if (hasHeatmap) setImgWithFallback(heatmapImg, imgPath('heatmap'));
   }
 
   // Hide any Analysis option whose TF list hasn't been populated yet,
