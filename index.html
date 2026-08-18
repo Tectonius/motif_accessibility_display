@@ -235,6 +235,7 @@
         <option value="dnase">DNase-I only</option>
         <option value="mnase">MNase only</option>
         <option value="ctcf_excluded">Real MNase-seq, CTCF-excluded</option>
+        <option value="ctcf_only">CTCF only</option>
         <option value="full_plus">Full, + strand</option>
         <option value="full_minus">Full, − strand</option>
         <option value="dnase_plus">DNase-I only, + strand</option>
@@ -386,6 +387,18 @@
       <a href="plots/comparison/full_vs_mnase_seq_comparison.png">the full
       comparison scatter plot</a> for all 155 TFs.
     </p>
+    <p>
+      <strong>CTCF only</strong> track: the same real MNase-seq signal,
+      but aggregated over CTCF's own ChIP-seq peaks (56,714, union of its
+      3 best-tier IDR thresholded peak replicates) rather than the
+      155-TF CTCF-excluded set -- a positive control, since CTCF is the
+      strongest known phaser of nucleosomes in the genome. Its
+      oscillation score (0.757) lands solidly in the upper-middle of the
+      155-TF ranking (4th out of 156 when compared directly), not a
+      runaway outlier -- reassuring, since it means the phasing seen at
+      the 155 excluded-for-CTCF-proximity TFs above isn't just a
+      diminished echo of a signal only CTCF can produce.
+    </p>
 
     <h4>Hi-C vs. MNase-seq comparison (CTCF-excluded)</h4>
     <p>
@@ -471,7 +484,18 @@
     nucleosome_mnase_seq: manifest.tfs_nucleosome_mnase_seq || [],
     hic_vs_mnase: manifest.tfs_hic_vs_mnase || [],
   };
+  // Per-track TF list overrides, for tracks whose region set differs from
+  // the rest of their analysis -- MNase-seq analysis's ctcf_only track is
+  // just CTCF itself, not the 155-TF CTCF-excluded set every other track
+  // there uses (CTCF was deliberately excluded from that set).
+  const TF_LISTS_BY_TRACK = {
+    nucleosome_mnase_seq: {
+      ctcf_only: manifest.tfs_nucleosome_mnase_seq_ctcf_only || [],
+    },
+  };
   function currentAllTfs() {
+    const override = (TF_LISTS_BY_TRACK[analysisSel.value] || {})[trackSel.value];
+    if (override) return override;
     return TF_LISTS[analysisSel.value] || [];
   }
   const regionCounts = {
@@ -480,6 +504,16 @@
     // Same 155-TF CTCF-excluded peak set MNase-seq analysis uses.
     hic_vs_mnase: manifest.n_nucleosome_ctcf_excluded_tfs || {},
   };
+  const regionCountsByTrack = {
+    nucleosome_mnase_seq: {
+      ctcf_only: manifest.n_nucleosome_mnase_seq_ctcf_only || {},
+    },
+  };
+  function regionCountFor(analysis, track, tf) {
+    const override = (regionCountsByTrack[analysis] || {})[track];
+    if (override && override[tf] !== undefined) return override[tf];
+    return (regionCounts[analysis] || {})[tf];
+  }
 
   // Oscillation score is specific to *which profile shape it's computed
   // from* -- computed independently per analysis/track, from that
@@ -490,7 +524,7 @@
       full_plus: {}, full_minus: {}, dnase_plus: {}, dnase_minus: {},
       full_ctcf_excluded: {},
     },
-    nucleosome_mnase_seq: { ctcf_excluded: {} },
+    nucleosome_mnase_seq: { ctcf_excluded: {}, ctcf_only: {} },
     // Not an independent measurement -- combined from the two source
     // tracks' own scores below once both are loaded.
     hic_vs_mnase: { overlay: {} },
@@ -525,6 +559,7 @@
     loadOsc('annot_motif', 'dnase_minus', 'data/oscillation_annot_motif_dnase_minus.tsv'),
     loadOsc('annot_motif', 'full_ctcf_excluded', 'data/oscillation_annot_motif_full_ctcf_excluded.tsv'),
     loadOsc('nucleosome_mnase_seq', 'ctcf_excluded', 'data/oscillation_nucleosome_mnase_seq_ctcf_excluded.tsv'),
+    loadOsc('nucleosome_mnase_seq', 'ctcf_only', 'data/oscillation_nucleosome_mnase_seq_ctcf_only.tsv'),
     loadOsc('_hic_ctcf_excluded', 'full', 'data/oscillation_nucleosome_full_ctcf_excluded_tfs.tsv'),
   ]);
 
@@ -574,6 +609,7 @@
     // MNase-seq analysis has exactly one track: the real, standalone
     // MNase-seq signal against a CTCF-proximity-excluded peak set.
     ctcf_excluded: ['nucleosome_mnase_seq'],
+    ctcf_only: ['nucleosome_mnase_seq'],
     // Hi-C vs. MNase-seq comparison has exactly one track: the dual-y-axis
     // overlay of the two CTCF-excluded profiles (this doesn't restrict the
     // *other* tracks' profile.png, but "overlay" itself is meaningless
@@ -632,7 +668,7 @@
       const opt = document.createElement('option');
       opt.value = tf;
       const osc = oscMap[tf];
-      const n = (regionCounts[analysisSel.value] || {})[tf];
+      const n = regionCountFor(analysisSel.value, trackSel.value, tf);
       const nPart = n !== undefined ? ` (n = ${n})` : '';
       opt.textContent = (sortSel.value === 'osc' && osc)
         ? `${tf}  (score ${osc.score.toFixed(3)})${nPart}`
@@ -668,6 +704,7 @@
       full_compare: 'full h.bw, strand comparison', dnase_compare: 'DNase-I only, strand comparison',
       full_ctcf_excluded: 'full h.bw, CTCF co-binding excluded',
       ctcf_excluded: 'real MNase-seq, CTCF-excluded',
+      ctcf_only: 'CTCF only, real MNase-seq',
       overlay: 'Hi-C h.bw vs. real MNase-seq, dual y-axis',
     };
     const trackLabel = trackLabels[track] || track;

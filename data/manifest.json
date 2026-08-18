@@ -1240,5 +1240,11 @@
     "ZNF687",
     "ZSCAN29",
     "ZZZ3"
-  ]
+  ],
+  "tfs_nucleosome_mnase_seq_ctcf_only": [
+    "CTCF"
+  ],
+  "n_nucleosome_mnase_seq_ctcf_only": {
+    "CTCF": 56714
+  }
 }
