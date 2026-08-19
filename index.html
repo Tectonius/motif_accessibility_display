@@ -226,9 +226,10 @@
         <option value="annot_motif">Annotated motif analysis</option>
         <option value="nucleosome_mnase_seq">MNase-seq analysis</option>
         <option value="hic_vs_mnase">Hi-C vs. MNase-seq comparison (CTCF-excluded)</option>
+        <option value="shape_factors">Shape factors summary (nucleosome phasing, all TFs)</option>
       </select>
     </div>
-    <div class="control">
+    <div class="control" id="trackControl">
       <label for="track">Track</label>
       <select id="track">
         <option value="full">Full (mixed-enzyme h.bw)</option>
@@ -246,7 +247,7 @@
         <option value="overlay">Hi-C vs. MNase-seq overlay</option>
       </select>
     </div>
-    <div class="control">
+    <div class="control" id="sortControl">
       <label for="sortBy">
         Sort TFs by
         <span class="info-icon" tabindex="0" aria-label="What is the oscillation score?">
@@ -268,13 +269,13 @@
         <option value="osc">Oscillation score (high → low)</option>
       </select>
     </div>
-    <div class="control grow">
+    <div class="control grow" id="tfControl">
       <label for="tf">Transcription factor</label>
       <select id="tf"></select>
     </div>
   </div>
 
-  <div class="meta-row">
+  <div class="meta-row" id="metaRow">
     <h2 id="tfTitle">—</h2>
     <span class="osc-info" id="oscInfo"></span>
   </div>
@@ -287,6 +288,25 @@
     <figure id="heatmapFigure">
       <img id="heatmapImg" alt="Heatmap plot">
       <figcaption>Per-region heatmap</figcaption>
+    </figure>
+  </div>
+
+  <div class="plots" id="shapeFactorsGallery" style="display:none">
+    <figure>
+      <img id="sfScatter" alt="Shape-factor summary scatter">
+      <figcaption>Oscillation score vs. amplitude, colored by center height, sized by peak count (n)</figcaption>
+    </figure>
+    <figure>
+      <img id="sfRanked" alt="Oscillation score ranked plot">
+      <figcaption>Oscillation score ranked, all 156 TFs &mdash; CTCF highlighted</figcaption>
+    </figure>
+    <figure>
+      <img id="sfConfound" alt="Peak count vs. oscillation score plot">
+      <figcaption>Peak count (n) vs. oscillation score &mdash; the occupancy confound</figcaption>
+    </figure>
+    <figure>
+      <img id="sfHeight" alt="Center height distribution plot">
+      <figcaption>Center height distribution &mdash; enrichment vs. depletion at peak center</figcaption>
     </figure>
   </div>
 
@@ -394,10 +414,12 @@
       155-TF CTCF-excluded set -- a positive control, since CTCF is the
       strongest known phaser of nucleosomes in the genome. Its
       oscillation score (0.757) lands solidly in the upper-middle of the
-      155-TF ranking (4th out of 156 when compared directly), not a
+      155-TF ranking (9th out of 156 when compared directly), not a
       runaway outlier -- reassuring, since it means the phasing seen at
       the 155 excluded-for-CTCF-proximity TFs above isn't just a
-      diminished echo of a signal only CTCF can produce.
+      diminished echo of a signal only CTCF can produce. See
+      <strong>Shape factors summary</strong> below for the full 156-TF
+      breakdown behind that ranking.
     </p>
 
     <h4>Hi-C vs. MNase-seq comparison (CTCF-excluded)</h4>
@@ -429,6 +451,44 @@
       from the same 155-TF CTCF-excluded peak set's own oscillation score
       (not independently selectable elsewhere on this site), used here
       only to build the combined ranking.
+    </p>
+
+    <h4>Shape factors summary</h4>
+    <p>
+      A TF-independent summary, not a per-TF view: every one of the 156
+      TFs in MNase-seq analysis's real-MNase-seq profiles (the CTCF-only
+      track plus the 155-TF CTCF-excluded set) reduced to five "shape
+      factors" and compared side by side. Each profile is folded at its
+      reference point first -- the upstream half reversed and averaged
+      into the downstream half -- for a higher-signal-to-noise, one-sided
+      curve, then reduced to: <strong>height</strong> (signed signal at
+      the peak center -- enrichment vs. depletion), <strong>width</strong>
+      (central peak FWHM in bp, only defined when height &gt; 0),
+      <strong>amplitude</strong> (std. dev. of the detrended flanking
+      residual, in the same units as height), <strong>period</strong>
+      (the flanking oscillation's wavelength in bp), and
+      <strong>oscillation score</strong> (the same autocorrelation-based
+      periodicity metric used to rank TFs elsewhere on this site).
+    </p>
+    <p>
+      <strong>Result:</strong> CTCF is not the strongest phaser in this
+      156-TF set -- it ranks 9th by oscillation score, behind SPI1, BATF,
+      ELF1, RUNX3, NFIC, ATF2, JUNB, and REST. CTCF does have by far the
+      largest central peak height (+0.359, strong nucleosome enrichment
+      right at its own binding site) -- most other TFs instead show
+      central <em>depletion</em> (a nucleosome-free region at the peak),
+      still flanked by strong regular phasing. A real confound to weigh
+      here: oscillation score correlates with peak count (n) across the
+      156 TFs (see the peak-count-vs-score plot below) -- higher-n TFs
+      average down noise better regardless of true phasing strength, and
+      both SPI1 (n=33,184) and CTCF (n=56,714) sit at the high end of
+      peak count, so part of their lead over low-n TFs could be
+      signal-averaging rather than a distinct biological mechanism.
+      Four plots: the shape-factor scatter (all five factors at once,
+      via position/size/color), the score-ranked view (where CTCF sits
+      among all 156), the peak-count-vs-score confound check, and the
+      height distribution (how many TFs show enrichment vs. depletion at
+      their own peak center).
     </p>
 
     <h4>Full vs. DNase-I only vs. MNase-only track</h4>
@@ -591,7 +651,12 @@
   const profileImg = document.getElementById('profileImg');
   const heatmapImg = document.getElementById('heatmapImg');
   const heatmapFigure = document.getElementById('heatmapFigure');
-  const plotsDiv = document.querySelector('.plots');
+  const plotsDiv = document.getElementById('profileImg').closest('.plots');
+  const shapeFactorsGallery = document.getElementById('shapeFactorsGallery');
+  const trackControl = document.getElementById('trackControl');
+  const sortControl = document.getElementById('sortControl');
+  const tfControl = document.getElementById('tfControl');
+  const metaRow = document.getElementById('metaRow');
 
   // Tracks that only make sense for (or have only been computed for) a
   // specific analysis. Any track NOT listed here (i.e. "full") is assumed
@@ -695,6 +760,18 @@
   }
 
   function render() {
+    if (analysisSel.value === 'shape_factors') {
+      plotsDiv.style.display = 'none';
+      shapeFactorsGallery.style.display = '';
+      setImgWithFallback(document.getElementById('sfScatter'), 'plots/shape_factors/summary_scatter.png');
+      setImgWithFallback(document.getElementById('sfRanked'), 'plots/shape_factors/score_ranked.png');
+      setImgWithFallback(document.getElementById('sfConfound'), 'plots/shape_factors/occupancy_confound.png');
+      setImgWithFallback(document.getElementById('sfHeight'), 'plots/shape_factors/height_distribution.png');
+      return;
+    }
+    plotsDiv.style.display = '';
+    shapeFactorsGallery.style.display = 'none';
+
     const tf = tfSel.value;
     const track = trackSel.value;
     const trackLabels = {
@@ -712,6 +789,7 @@
       annot_motif: 'Annotated motif analysis',
       nucleosome_mnase_seq: 'MNase-seq analysis',
       hic_vs_mnase: 'Hi-C vs. MNase-seq comparison (CTCF-excluded)',
+      shape_factors: 'Shape factors summary',
     };
     const analysisLabel = analysisLabels[analysisSel.value] || analysisSel.value;
     tfTitle.textContent = `${tf} — ${analysisLabel} (${trackLabel})`;
@@ -737,24 +815,37 @@
   }
 
   // Hide any Analysis option whose TF list hasn't been populated yet,
-  // rather than showing a dropdown with no TFs to pick from.
+  // rather than showing a dropdown with no TFs to pick from -- except
+  // shape_factors, which has no per-TF list by design (it's a fixed
+  // 4-plot summary gallery across all 156 TFs at once, not a per-TF view).
+  const NO_TF_ANALYSES = new Set(['shape_factors']);
   function hideEmptyAnalyses() {
     for (const opt of analysisSel.querySelectorAll('option')) {
+      if (NO_TF_ANALYSES.has(opt.value)) continue;
       const empty = (TF_LISTS[opt.value] || []).length === 0;
       opt.hidden = empty;
       opt.disabled = empty;
     }
-    if ((TF_LISTS[analysisSel.value] || []).length === 0) {
+    if (!NO_TF_ANALYSES.has(analysisSel.value) && (TF_LISTS[analysisSel.value] || []).length === 0) {
       analysisSel.value = 'annot_motif';
     }
   }
 
-  analysisSel.addEventListener('change', () => { updateTrackOptions(); populateTfSelect(); render(); });
+  function updateControlVisibility() {
+    const isSummary = analysisSel.value === 'shape_factors';
+    trackControl.style.display = isSummary ? 'none' : '';
+    sortControl.style.display = isSummary ? 'none' : '';
+    tfControl.style.display = isSummary ? 'none' : '';
+    metaRow.style.display = isSummary ? 'none' : '';
+  }
+
+  analysisSel.addEventListener('change', () => { updateControlVisibility(); updateTrackOptions(); populateTfSelect(); render(); });
   trackSel.addEventListener('change', () => { populateTfSelect(); render(); });
   sortSel.addEventListener('change', () => { populateTfSelect(); render(); });
   tfSel.addEventListener('change', render);
 
   hideEmptyAnalyses();
+  updateControlVisibility();
   updateTrackOptions();
   populateTfSelect();
   render();
